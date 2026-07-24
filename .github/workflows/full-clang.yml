@@ -63,7 +63,7 @@ jobs:
           mkdir ${{env.report-dir}}
           out_dir="$PWD/${{env.report-dir}}"
           echo "test-reports-dir=$out_dir" >> $GITHUB_OUTPUT
-          ./panda_regressions/hls/${{matrix.script}} --returnfail --junitdir="$out_dir" --summary="$out_dir/perf.xml" ${{env.args}}
+          ./panda_regressions/hls/${{matrix.script}} --returnfail --junitdir="$out_dir" --summary="$out_dir/perf.xml" ${{env.args}} ${{matrix.args}}
       - name: Upload test reports
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v6
