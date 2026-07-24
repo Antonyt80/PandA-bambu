@@ -1,0 +1,11 @@
+self-hosted-runner:
+  labels:
+    - altera
+    - intelFPGA
+    - lattice
+    - long
+    - mentor
+    - nanoxplore
+    - xilinx
+
+config-variables: null

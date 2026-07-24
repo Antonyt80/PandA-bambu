@@ -93,7 +93,7 @@ jobs:
             config_name="${device}_${period}$(sed -e 's/\([-]\+\)/_/g' <<< $args)"
             config_out="$out_dir/$config_name"
             mkdir -p "$config_out"
-            ${{matrix.script}} -o $test_dir --returnfail --junitdir="$config_out" --summary="$config_out/perf.xml" -c=--compiler=${{env.test-compiler}} -c=--device-name=${device} -c=--clock-period=${period} ${{env.args}} ${{matrix.args}} ${args[@]/#/-c=}
+            ${{matrix.script}} -o $test_dir --returnfail --junitdir="$config_out" --summary="$config_out/perf.xml" -c=--compiler=${{env.test-compiler}} -c=--device-name=${device} -c=--clock-period=${period} ${{env.args}} ${args[@]/#/-c=}
             echo "::endgroup::"
           done
       - name: Upload test reports
