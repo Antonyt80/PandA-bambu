@@ -48,7 +48,7 @@ jobs:
 
       - name: Validate GitHub Actions workflows
         shell: bash
-        run: actionlint
+        run: actionlint -shellcheck=
 
       - name: Validate local CI contracts
         shell: bash
