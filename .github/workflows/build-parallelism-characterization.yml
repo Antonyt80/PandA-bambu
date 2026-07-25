@@ -1,6 +1,7 @@
 name: Build parallelism characterization
 
 on:
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -13,6 +14,7 @@ concurrency:
 jobs:
   cold_jobs_2:
     name: Cold open build — jobs=2
+    if: ${{ github.event_name == 'workflow_dispatch' || github.head_ref == 'agent/ci-parallelism-characterization' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     outputs:
@@ -80,7 +82,7 @@ jobs:
           retention-days: 3
 
       - name: Enforce jobs=2 result
-        if: ${{ always() }}
+        if: ${{ always() && (github.event_name == 'workflow_dispatch' || github.head_ref == 'agent/ci-parallelism-characterization') }}
         shell: bash
         env:
           RESULT: ${{ steps.characterize.outputs.result }}
@@ -92,6 +94,7 @@ jobs:
 
   cold_jobs_4:
     name: Cold open build — jobs=4
+    if: ${{ github.event_name == 'workflow_dispatch' || github.head_ref == 'agent/ci-parallelism-characterization' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     outputs:
@@ -159,7 +162,7 @@ jobs:
           retention-days: 3
 
       - name: Enforce jobs=4 result
-        if: ${{ always() }}
+        if: ${{ always() && (github.event_name == 'workflow_dispatch' || github.head_ref == 'agent/ci-parallelism-characterization') }}
         shell: bash
         env:
           RESULT: ${{ steps.characterize.outputs.result }}
@@ -171,7 +174,7 @@ jobs:
 
   comparison:
     name: Compare cold build parallelism
-    if: ${{ always() }}
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || github.head_ref == 'agent/ci-parallelism-characterization') }}
     needs:
       - cold_jobs_2
       - cold_jobs_4
