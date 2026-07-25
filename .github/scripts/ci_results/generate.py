@@ -1146,8 +1146,8 @@ def generate_bundle(
 
     env = os.environ if environment is None else environment
     root = (repository or Path.cwd()).resolve()
-    candidate_directory_value = _raw(env, "CANDIDATE_BUNDLE_DIR")
-    candidate_path = Path(candidate_directory_value) if candidate_directory_value else None
+    candidate_dir_path = _raw(env, "CANDIDATE_BUNDLE_DIR")
+    candidate_path = Path(candidate_dir_path) if candidate_dir_path else None
     candidate_directory = None
     if candidate_path is not None:
         candidate_directory = (

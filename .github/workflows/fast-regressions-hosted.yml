@@ -272,11 +272,11 @@ jobs:
           if [[ -z "${regression_results}" ]]; then
             regression_results=.ci-regression-results
           fi
+          set +e
           log_directory=.ci-results-generator
           mkdir -p "${log_directory}"
           stdout_log="${log_directory}/stdout.log"
           stderr_log="${log_directory}/stderr.log"
-          set +e
           python3 -m ci_results generate \
             --output .ci-results \
             --regression-results "${regression_results}" \
