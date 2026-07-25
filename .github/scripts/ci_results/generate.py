@@ -1146,6 +1146,12 @@ def generate_bundle(
 
     env = os.environ if environment is None else environment
     root = (repository or Path.cwd()).resolve()
+    candidate_directory_value = _raw(env, "CANDIDATE_BUNDLE_DIR")
+    candidate_directory = (
+        (Path(candidate_directory_value) if Path(candidate_directory_value).is_absolute() else root / candidate_directory_value)
+        if candidate_directory_value
+        else None
+    )
     output = output_directory.absolute()
     if output.is_symlink():
         raise ValueError(f"refusing to replace symlinked bundle directory: {output}")
@@ -1173,5 +1179,18 @@ def generate_bundle(
                 output.unlink()
         os.replace(temporary, output)
         return validate_bundle(output)
+    except Exception:
+        if candidate_directory is not None:
+            try:
+                if candidate_directory.exists():
+                    if candidate_directory.is_dir():
+                        shutil.rmtree(candidate_directory)
+                    else:
+                        candidate_directory.unlink()
+                candidate_directory.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copytree(temporary, candidate_directory)
+            except OSError:
+                pass
+        raise
     finally:
         shutil.rmtree(temporary, ignore_errors=True)
