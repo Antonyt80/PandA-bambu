@@ -230,8 +230,9 @@ jobs:
             speedup="$(awk -v baseline="${J2_BUILD}" -v candidate="${J4_BUILD}" "BEGIN { printf \"%.2fx\", baseline / candidate }")"
           fi
 
-          recommendation="Retain jobs=2: jobs=4 did not complete without an OOM or kill."
-          if [[ "${J4_RESULT:-}" == "pass" && "${J4_OOM:-unknown}" == "no" && "${J4_KILL:-unknown}" == "no" ]]; then
+          recommendation="Retain jobs=2: both cold configurations must pass without an OOM or kill for comparison."
+          if [[ "${J2_RESULT:-}" == "pass" && "${J2_OOM:-unknown}" == "no" && "${J2_KILL:-unknown}" == "no" &&
+                "${J4_RESULT:-}" == "pass" && "${J4_OOM:-unknown}" == "no" && "${J4_KILL:-unknown}" == "no" ]]; then
             if [[ "${J2_BUILD:-}" =~ ^[0-9]+$ && "${J4_BUILD:-}" =~ ^[0-9]+$ ]] &&
                awk -v baseline="${J2_BUILD}" -v candidate="${J4_BUILD}" "BEGIN { exit !(candidate > 0 && baseline / candidate >= 1.10) }"; then
               recommendation="jobs=4 is a candidate production default: stable cold build and at least 1.10x build speedup."

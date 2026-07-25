@@ -175,6 +175,12 @@ runs:
         action_exit_status="${ACTION_EXIT_STATUS:-unknown}"
         oom_detected="${OOM_DETECTED:-unknown}"
         kill_detected="${KILL_DETECTED:-unknown}"
+        if [[ "${result}" == "fail" && "${build_exit_status}" == "running" ]]; then
+          build_exit_status=unknown
+        fi
+        if [[ "${result}" == "fail" && "${action_exit_status}" == "running" ]]; then
+          action_exit_status=unknown
+        fi
 
         {
           echo "result=${result}"
