@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
-from .bundle import validate_bundle
+from .bundle import BundleValidationError, validate_bundle
 from .constants import ARTIFACT_IDS, CHECK_IDS, METRIC_IDS, RULE_IDS, STAGE_IDS
 from .hashing import (
     docker_base_image,
@@ -19,7 +19,8 @@ from .hashing import (
     submodule_commits,
 )
 from .regressions import extend_bundle_with_regressions
-from .serialization import write_json
+from .schema import SchemaValidationError
+from .serialization import SerializationError, write_json
 
 
 CMAKE_ARGUMENTS = (
@@ -1180,7 +1181,13 @@ def generate_bundle(
                 output.unlink()
         os.replace(temporary, output)
         return validate_bundle(output)
-    except Exception:
+    except (
+        BundleValidationError,
+        SchemaValidationError,
+        SerializationError,
+        OSError,
+        ValueError,
+    ):
         if candidate_directory is not None:
             try:
                 if candidate_directory.exists():

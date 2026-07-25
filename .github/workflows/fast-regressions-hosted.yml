@@ -284,12 +284,19 @@ jobs:
             2> "${stderr_log}"
           status=$?
           set -e
-          if [[ -s "${stdout_log}" ]]; then
-            cat "${stdout_log}"
-          fi
-          if [[ -s "${stderr_log}" ]]; then
-            cat "${stderr_log}" >&2
-          fi
+          emit_log() {
+            local path="$1"
+            local stream="$2"
+            if [[ -s "${path}" ]]; then
+              if [[ "${stream}" == "stderr" ]]; then
+                cat "${path}" >&2
+              else
+                cat "${path}"
+              fi
+            fi
+          }
+          emit_log "${stdout_log}" stdout
+          emit_log "${stderr_log}" stderr
           exit "${status}"
 
       - name: Validate structured CI results
