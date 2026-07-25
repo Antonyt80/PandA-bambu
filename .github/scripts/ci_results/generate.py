@@ -1148,9 +1148,11 @@ def generate_bundle(
     root = (repository or Path.cwd()).resolve()
     candidate_directory_value = _raw(env, "CANDIDATE_BUNDLE_DIR")
     candidate_path = Path(candidate_directory_value) if candidate_directory_value else None
-    candidate_directory = (
-        candidate_path if candidate_path is not None and candidate_path.is_absolute() else root / candidate_path
-    ) if candidate_path is not None else None
+    candidate_directory = None
+    if candidate_path is not None:
+        candidate_directory = (
+            candidate_path if candidate_path.is_absolute() else root / candidate_path
+        )
     output = output_directory.absolute()
     if output.is_symlink():
         raise ValueError(f"refusing to replace symlinked bundle directory: {output}")
