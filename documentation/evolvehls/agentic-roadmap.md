@@ -1,7 +1,7 @@
 # EvolveHLS Portable Agent Framework — Refined Roadmap
 
 **Status:** planning snapshot captured 2026-08-02  
-**Current dependency:** PR #23 (`agent/portable-task-supervisor`) at `4bcdb25b86fb9cd7224c29be41f0567746bfdc99`
+**Current baseline:** PAF-05A2 merged through PR #23 as `be25381df5f8f50363a98d9ff5557364d8656e1f`
 
 ## Product vision
 
@@ -49,7 +49,7 @@ Advanced declarative configuration remains available for reproducibility, automa
 | PAF-03B | Turnkey bootstrap, environment detection, generated adapters | Foundation completed |
 | PAF-04 | Durable architecture and inspection knowledge | Foundation completed |
 | PAF-05A1 | Execution request, handoff preview, and receipt contracts | Merged in PR #22 |
-| PAF-05A2 | Trusted worktree management and process supervision | Draft PR #23; final review pending |
+| PAF-05A2 | Trusted worktree management and process supervision | Completed and merged in PR #23 |
 
 The existing v1 task, result, execution-request, fixture-handoff, and execution-receipt contracts remain compatibility fixtures. They are not yet the complete interfaces for autonomous coding, federated workspaces, adaptive orchestration, or design-space exploration.
 
