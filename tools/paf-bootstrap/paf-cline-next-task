@@ -413,6 +413,15 @@ def main() -> int:
         print(json.dumps(blocked, indent=2, sort_keys=True))
         return 2
     assert task is not None
+
+    # Controller-owned immutable task identity.
+    task["campaign_id"] = config["campaign_id"]
+    task["backlog_item_id"] = item["id"]
+    task["task_id"] = item["id"]
+    task["milestone"] = item["milestone"]
+    task["base_branch"] = config["base_branch"]
+    task["depends_on"] = item.get("depends_on", [])
+
     validate_task(task, config, item)
     task["generated_base_sha"] = base_sha
     task["backlog_item_digest"] = typed_digest("paf-bootstrap-backlog-item-v1", item)
