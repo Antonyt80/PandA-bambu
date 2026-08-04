@@ -283,6 +283,33 @@ def validate_validation_command(command: str) -> None:
         raise SystemExit(f"Unsupported validation command prefix: {command!r}")
 
 
+def bind_controller_owned_task_fields(
+    task: dict[str, Any], config: dict[str, Any], item: dict[str, Any]
+) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
+    """Bind immutable task identity fields selected by the controller.
+
+    The model proposes the descriptive task contract, but it does not own campaign,
+    backlog, milestone, base-branch, or dependency identity.  Return an auditable
+    record of any model values that were replaced.
+    """
+    bound = dict(task)
+    authoritative = {
+        "campaign_id": config["campaign_id"],
+        "backlog_item_id": item["id"],
+        "task_id": item["id"],
+        "milestone": item["milestone"],
+        "base_branch": config["base_branch"],
+        "depends_on": item.get("depends_on", []),
+    }
+    rewrites: dict[str, dict[str, Any]] = {}
+    for field, value in authoritative.items():
+        supplied = bound.get(field)
+        if supplied != value:
+            rewrites[field] = {"model_supplied": supplied, "controller_bound": value}
+        bound[field] = value
+    return bound, rewrites
+
+
 def validate_task(task: dict[str, Any], config: dict[str, Any], item: dict[str, Any]) -> None:
     required = {
         "schema_version", "campaign_id", "backlog_item_id", "task_id", "milestone",
@@ -425,6 +452,17 @@ def main() -> int:
         print(json.dumps(blocked, indent=2, sort_keys=True))
         return 2
     assert task is not None
+    task, identity_rewrites = bind_controller_owned_task_fields(task, config, item)
+    if identity_rewrites:
+        save_json_atomic(
+            generation_dir / "identity-binding.json",
+            {
+                "schema_version": 1,
+                "recorded_at": utc_now(),
+                "backlog_item_id": item["id"],
+                "rewrites": identity_rewrites,
+            },
+        )
     validate_task(task, config, item)
     task["generated_base_sha"] = base_sha
     task["backlog_item_digest"] = typed_digest("paf-bootstrap-backlog-item-v1", item)
