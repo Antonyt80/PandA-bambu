@@ -28,6 +28,8 @@ FORBIDDEN_COMMAND_WORDS = (
 ALLOWED_VALIDATION_PREFIXES = (
     "git diff --check", "python3 ", "python ", "pytest ", "ctest", "ninja", "make",
     "cmake ", "bash tools/", "./tools/", "bash scripts/", "./scripts/",
+    "node tests/",
+    "node tools/",
 )
 
 
