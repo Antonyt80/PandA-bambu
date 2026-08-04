@@ -1,0 +1,199 @@
+{
+  "schema_version": 1,
+  "decision_set": "PAF-v9",
+  "architecture_revision": 9,
+  "decisions": [
+    {
+      "id": "PAF-DEC-001",
+      "status": "accepted",
+      "statement": "PAF is a portable engineering-campaign assurance and control layer, not an agent or workflow framework.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-002",
+      "status": "accepted",
+      "statement": "Implementation is organized as paf.kernel, paf.control, paf.assurance, plus namespaced domain profiles.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-003",
+      "status": "accepted",
+      "statement": "Accepted semantic history is append-only; bootstrap uses atomic files and reusable core uses SQLite WAL plus immutable blobs.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-004",
+      "status": "accepted",
+      "statement": "The ledger is authoritative; the Semantic Work Graph and other graph views are derived projections.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-005",
+      "status": "accepted",
+      "statement": "All adaptive behavior follows a bounded propose-validate-critique-accept-execute-assess-repair protocol.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-006",
+      "status": "accepted",
+      "statement": "Execution requests capabilities and creates an exact RouteBinding; fallback and switching are never silent.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-007",
+      "status": "accepted",
+      "statement": "AssessmentProtocol is immutable and versioned, with validation and experiment profiles.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-008",
+      "status": "accepted",
+      "statement": "Candidate work cannot modify or silently influence evaluator assets, baseline, benchmark, parser, or promotion policy.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-009",
+      "status": "accepted",
+      "statement": "Search and evolution algorithms are adapters, not PAF core engines.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-010",
+      "status": "accepted",
+      "statement": "Candidate lineage is an optional campaign profile.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-011",
+      "status": "accepted",
+      "statement": "Protected completion requires exact-subject independent assessment according to an IndependencePolicy.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-012",
+      "status": "accepted",
+      "statement": "One PackageManifest supports Audit, Evidence, Reproduction, and Completion profiles.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-013",
+      "status": "accepted",
+      "statement": "Tools use tiered mediation; protected effects require fresh commit-time authorization and receipts.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-014",
+      "status": "accepted",
+      "statement": "MCP, A2A, OpenTelemetry, OPA, and in-toto/SLSA are adapters/standards, not authority by themselves.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-015",
+      "status": "accepted",
+      "statement": "Backend order is current Cline/local semantics, OpenHands portability, LangGraph adaptation, then Temporal when required.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-016",
+      "status": "accepted",
+      "statement": "Persistence migration is staged; no bootstrap-wide SQLite rewrite precedes stable contracts.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-017",
+      "status": "accepted",
+      "statement": "Every agent attempt references an immutable ContextPackage and retrieval provenance.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-018",
+      "status": "accepted",
+      "statement": "Audit records explicit engineering rationale and evidence, not hidden chain-of-thought.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-019",
+      "status": "accepted",
+      "statement": "Retry, task revision, prerequisite resolution, regeneration, recovery, reconciliation, and replanning are distinct.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-020",
+      "status": "accepted",
+      "statement": "Domain profiles are namespaced and cannot override kernel identity or protected invariants.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-021",
+      "status": "accepted",
+      "statement": "Autonomous loops cannot weaken safety, evaluator integrity, correctness, or protected approval policy.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-022",
+      "status": "accepted",
+      "statement": "Standalone extraction follows stable APIs, recovery/packages, a second runtime, and one real EvolveHLS campaign.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-023",
+      "status": "accepted",
+      "statement": "Semantic contracts, interchange encoding, and canonical bytes are separate normative layers.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-024",
+      "status": "accepted",
+      "statement": "Schema/version negotiation, unknown fields, migration, and source lineage are explicit and tested.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-025",
+      "status": "accepted",
+      "statement": "Every active phase has durable controller-owned run identity; old logs are never inferred active by recency alone.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-026",
+      "status": "accepted",
+      "statement": "Protected durable effects are reauthorized at commit time against current dependencies and eligibility.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-027",
+      "status": "accepted",
+      "statement": "External effects declare idempotency and reconciliation semantics.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-028",
+      "status": "accepted",
+      "statement": "Error and block taxonomies determine permitted recovery actions.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-029",
+      "status": "accepted",
+      "statement": "Budgets are multidimensional and explicit; bootstrap begins with time, attempts, tokens/cost, and tool timeouts.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-030",
+      "status": "accepted",
+      "statement": "RAG is a replaceable deterministic-first context adapter; no retrieval framework is authoritative.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-031",
+      "status": "accepted",
+      "statement": "Conformance tests accompany every contract slice.",
+      "architecture_revision": 9
+    },
+    {
+      "id": "PAF-DEC-032",
+      "status": "accepted",
+      "statement": "Bootstrap implementation choices are temporary unless mapped explicitly to reusable PAF contracts.",
+      "architecture_revision": 9
+    }
+  ]
+}

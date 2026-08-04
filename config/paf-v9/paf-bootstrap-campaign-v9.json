@@ -1,0 +1,478 @@
+{
+  "backlog": [
+    {
+      "id": "BS-000",
+      "milestone": "R0",
+      "title": "Merge approved architecture and hardened bootstrap",
+      "depends_on": [],
+      "objective": "Establish the reviewed architecture, decisions, bootstrap tools, security/operations plans, schemas, monitoring, preflight, review, and smoke tests.",
+      "expected_paths": [
+        "documentation/evolvehls/**",
+        "config/**",
+        "tools/paf-bootstrap/**"
+      ],
+      "status_hint": "complete-after-merge"
+    },
+    {
+      "id": "BS-010",
+      "milestone": "R1",
+      "title": "Implement PAF wire identity and canonical form",
+      "depends_on": [
+        "BS-000"
+      ],
+      "objective": "Implement semantic identity, immutable revision identity, restricted JSON encoding, canonical byte profile, typed digests, registry/negotiation, migration envelope, and cross-language conformance vectors.",
+      "expected_paths": [
+        "paf/identity/**",
+        "tests/paf/identity/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-012",
+      "milestone": "R1-B",
+      "title": "Internalize active phase identity and monitoring",
+      "depends_on": [
+        "BS-010"
+      ],
+      "objective": "Represent generation, task review, revision, implementation, validation, and exact-head review with durable run/phase identity and reliable active/historical status.",
+      "expected_paths": [
+        "tools/paf-bootstrap/**",
+        "tests/paf/bootstrap/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-014",
+      "milestone": "R1-V",
+      "title": "Internalize typed validation activities and receipts",
+      "depends_on": [
+        "BS-012"
+      ],
+      "objective": "Promote structured executable/argument authorization, shell-free production validation, and detailed authorization/execution receipts into stable PAF validation contracts.",
+      "expected_paths": [
+        "paf/assurance/**",
+        "paf/control/**",
+        "tools/paf-bootstrap/**",
+        "tests/paf/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-016",
+      "milestone": "R1-R",
+      "title": "Implement prerequisite preflight and explicit block operations",
+      "depends_on": [
+        "BS-014"
+      ],
+      "objective": "Bind tasks to required decisions and exact base, reject unresolved prerequisites before implementation, and separate retry, revision, prerequisite resolution, regeneration, reconciliation, replanning, and termination.",
+      "expected_paths": [
+        "paf/control/**",
+        "paf/kernel/**",
+        "tools/paf-bootstrap/**",
+        "tests/paf/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-018",
+      "milestone": "R1-P",
+      "title": "Implement partial-work manifests and compatible recovery",
+      "depends_on": [
+        "BS-016"
+      ],
+      "objective": "Capture exact partial work, completed criteria, validations, assumptions, and external effects; assess compatibility before reuse and preserve attempt lineage.",
+      "expected_paths": [
+        "paf/control/**",
+        "tools/paf-bootstrap/**",
+        "tests/paf/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-020",
+      "milestone": "R2",
+      "title": "Implement minimal kernel contract event and error envelope",
+      "depends_on": [
+        "BS-018"
+      ],
+      "objective": "Implement common revisioned objects, schema/version behavior, typed relations, accepted events, causal metadata, error/block records, and conformance fixtures.",
+      "expected_paths": [
+        "paf/kernel/**",
+        "tests/paf/kernel/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-025",
+      "milestone": "R2-S",
+      "title": "Implement classification redaction and ContextPackage contracts",
+      "depends_on": [
+        "BS-020"
+      ],
+      "objective": "Implement data labels, source/context snapshots, release/redaction decisions, ContextPackage identity, transformation lineage, and untrusted-content handling.",
+      "expected_paths": [
+        "paf/kernel/**",
+        "paf/context/**",
+        "tests/paf/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-030",
+      "milestone": "R3",
+      "title": "Instrument the existing bootstrap as a shadow PAF control runtime",
+      "depends_on": [
+        "BS-025"
+      ],
+      "objective": "Emit normalized attempt, phase, activity, tool, validation, review, route, budget, and evidence records for real bootstrap work without transferring controller authority.",
+      "expected_paths": [
+        "paf/control/**",
+        "paf/assurance/**",
+        "tools/paf-bootstrap/**",
+        "tests/paf/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-035",
+      "milestone": "R3-O",
+      "title": "Implement status projections and runtime conformance fixtures",
+      "depends_on": [
+        "BS-030"
+      ],
+      "objective": "Provide read-only status/health projections and conformance scenarios for success, provider block, timeout, stale process, repeated actions, interruption, resume, and historical display.",
+      "expected_paths": [
+        "paf/monitoring/**",
+        "paf/conformance/**",
+        "tools/paf-bootstrap/**",
+        "tests/paf/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-040",
+      "milestone": "R4",
+      "title": "Implement durable local ledger checkpoints backup and recovery",
+      "depends_on": [
+        "BS-035"
+      ],
+      "objective": "Implement SQLite WAL ledger, content-addressed blobs, migrations, snapshots, leases, idempotent commands, checkpoints, replay, backup/restore, failure injection, and reconciliation.",
+      "expected_paths": [
+        "paf/kernel/**",
+        "paf/control/**",
+        "paf/storage/**",
+        "tests/paf/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-045",
+      "milestone": "R4-O",
+      "title": "Implement durable monitoring and alert records",
+      "depends_on": [
+        "BS-040"
+      ],
+      "objective": "Build projections for phase health, queue age, cost, churn, blocks, reviewer disagreement, evidence completeness, recovery, and privacy-safe OpenTelemetry correlation.",
+      "expected_paths": [
+        "paf/monitoring/**",
+        "paf/telemetry/**",
+        "tests/paf/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-050",
+      "milestone": "R5",
+      "title": "Implement secure local control runtime and effect boundary",
+      "depends_on": [
+        "BS-045"
+      ],
+      "objective": "Implement process/tool supervision, workspace bounds, network/package policy, secret references, cancellation, resource budgets, effect classes, commit-time authorization, receipts, cleanup, and forensic evidence.",
+      "expected_paths": [
+        "paf/control/**",
+        "paf/security/**",
+        "paf/resources/**",
+        "tests/paf/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-051",
+      "milestone": "R5-A",
+      "title": "Implement Cline as the first conforming coding-agent adapter",
+      "depends_on": [
+        "BS-050"
+      ],
+      "objective": "Map Cline planning, implementation, tools, workspaces, outputs, checkpoints, and reviews to PAF contracts while retaining controller-owned publication.",
+      "expected_paths": [
+        "paf/adapters/cline/**",
+        "paf/control/**",
+        "tests/paf/**",
+        "examples/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-060",
+      "milestone": "R6",
+      "title": "Implement capability routing bindings and multidimensional budgets",
+      "depends_on": [
+        "BS-051"
+      ],
+      "objective": "Implement capability requests, evidence-bearing route candidates, exact bindings, local/remote routes, health, reservations, deterministic selection, explicit fallback, and budget accounting.",
+      "expected_paths": [
+        "paf/routing/**",
+        "paf/models/**",
+        "paf/resources/**",
+        "paf/scheduling/**",
+        "tests/paf/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-070",
+      "milestone": "R7",
+      "title": "Implement assessment completion recovery decisions and package profiles",
+      "depends_on": [
+        "BS-060"
+      ],
+      "objective": "Implement AssessmentProtocol, criterion and independence assessment, completion, circuit breakers, bounded recovery/switch decisions, and Audit/Evidence/Reproduction/Completion PackageManifest profiles.",
+      "expected_paths": [
+        "paf/assurance/**",
+        "paf/control/**",
+        "paf/packages/**",
+        "tests/paf/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-080",
+      "milestone": "R8",
+      "title": "Implement deterministic retrieval and immutable ContextPackages",
+      "depends_on": [
+        "BS-070"
+      ],
+      "objective": "Implement source/index snapshots, exact path/symbol/relation lookup, SQLite FTS5, retrieval audit, role-specific context assembly, staleness, and retrieval benchmarks without a mandatory vector framework.",
+      "expected_paths": [
+        "paf/context/**",
+        "paf/retrieval/**",
+        "tests/paf/**",
+        "examples/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-085",
+      "milestone": "R8-M",
+      "title": "Implement one governed read-only MCP adapter",
+      "depends_on": [
+        "BS-080"
+      ],
+      "objective": "Map a pinned local read-only MCP server into PAF tool/resource descriptors, context release policy, prompt-injection defenses, receipts, and audit without trusting server declarations.",
+      "expected_paths": [
+        "paf/adapters/mcp/**",
+        "paf/security/**",
+        "paf/context/**",
+        "tests/paf/**",
+        "examples/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-090",
+      "milestone": "R9",
+      "title": "Implement Semantic Work Graph and bounded hierarchical planning",
+      "depends_on": [
+        "BS-085"
+      ],
+      "objective": "Implement objectives, requirements, Work Proposals, accepted graph mutations, planner/critic protocol, duplication/coverage checks, scheduling, graph-growth limits, no-progress detection, and bounded child generation.",
+      "expected_paths": [
+        "paf/work/**",
+        "paf/planning/**",
+        "paf/kernel/**",
+        "tests/paf/**",
+        "examples/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-095",
+      "milestone": "R9-C",
+      "title": "Run the first bounded self-hosted PAF coding campaign",
+      "depends_on": [
+        "BS-090"
+      ],
+      "objective": "Use the local Cline adapter to generate, critique, implement, validate, repair, assess, and package one bounded PAF feature while merge remains human-controlled.",
+      "expected_paths": [
+        "paf/**",
+        "tools/paf-bootstrap/**",
+        "tests/**",
+        "examples/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-100",
+      "milestone": "R10",
+      "title": "Implement OpenHands as a second coding-agent adapter",
+      "depends_on": [
+        "BS-095"
+      ],
+      "objective": "Execute the same portable WorkItem and assessment contracts through a materially different typed coding-agent/workspace runtime.",
+      "expected_paths": [
+        "paf/adapters/openhands/**",
+        "paf/control/**",
+        "tests/paf/**",
+        "examples/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-105",
+      "milestone": "R10-C",
+      "title": "Run cross-runtime semantic conformance",
+      "depends_on": [
+        "BS-100"
+      ],
+      "objective": "Demonstrate equivalent task identity, context, effects, recovery, evidence, and completion across Cline and OpenHands adapters.",
+      "expected_paths": [
+        "paf/conformance/**",
+        "tests/paf/**",
+        "examples/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-110",
+      "milestone": "R11",
+      "title": "Run the first portable hierarchical self-hosted campaign",
+      "depends_on": [
+        "BS-105"
+      ],
+      "objective": "Exercise dynamic Work Graph proposals, retrieval, route changes, redaction, monitoring, stalls, recovery, independent review, and package generation across supported adapters.",
+      "expected_paths": [
+        "paf/**",
+        "tools/paf-bootstrap/**",
+        "tests/**",
+        "examples/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-112",
+      "milestone": "R11-L",
+      "title": "Implement a LangGraph control-backend adapter",
+      "depends_on": [
+        "BS-110"
+      ],
+      "objective": "Compile bounded PAF adaptive graphs to LangGraph checkpoints, interrupts, subgraphs, and replay without transferring semantic authority.",
+      "expected_paths": [
+        "paf/backends/langgraph/**",
+        "paf/control/**",
+        "tests/paf/**",
+        "examples/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-120",
+      "milestone": "R12",
+      "title": "Cut over normal control and prepare standalone extraction",
+      "depends_on": [
+        "BS-112"
+      ],
+      "objective": "Remove duplicate authoritative bootstrap orchestration, retain recovery/doctor tooling, stabilize public APIs and packaging, add rollback, and rehearse standalone extraction.",
+      "expected_paths": [
+        "paf/**",
+        "tools/paf-bootstrap/**",
+        "packaging/**",
+        "tests/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    }
+  ],
+  "base_branch": "dev/panda",
+  "campaign_id": "paf-bootstrap-self-hosting",
+  "documents": {
+    "final_architecture_v9": "documentation/evolvehls/paf-v9/paf-final-architecture-v9.md",
+    "decision_audit_v9": "documentation/evolvehls/paf-v9/paf-decision-audit-v9.md",
+    "security_reliability_v9": "documentation/evolvehls/paf-v9/paf-security-reliability-v9.md",
+    "context_rag_v9": "documentation/evolvehls/paf-v9/paf-context-rag-v9.md",
+    "framework_boundary_v9": "documentation/evolvehls/paf-v9/paf-framework-boundary-v9.md",
+    "bootstrap_runbook_v9": "documentation/evolvehls/paf-v9/paf-bootstrap-runbook-v9.md",
+    "bootstrap_operational_invariants": "documentation/evolvehls/paf-bootstrap-operational-invariants.md",
+    "bootstrap_plan": "documentation/evolvehls/paf-bootstrap-self-hosting-plan.md",
+    "runtime_specification": "documentation/evolvehls/paf-runtime-specification.md",
+    "observability_operations": "documentation/evolvehls/paf-observability-operations-plan.md",
+    "security_data_governance": "documentation/evolvehls/paf-security-data-governance-plan.md"
+  },
+  "generation_policy": {
+    "allow_stacked_branches": false,
+    "bind_backlog_digest": true,
+    "bind_exact_base_sha": true,
+    "maximum_generated_tasks_per_call": 1,
+    "merge_is_human_only": true,
+    "one_task_at_a_time": true,
+    "publication_is_controller_owned": true,
+    "reject_stale_task_contracts": true,
+    "require_allowed_paths_subset": true,
+    "require_exact_allowed_paths": true,
+    "require_independent_review": true,
+    "require_operator_authorization": true,
+    "require_positive_and_adversarial_validation": true,
+    "require_previous_task_merged": true,
+    "require_repository_inspection": true,
+    "scope_expansion_is_forbidden": true
+  },
+  "profiles": {
+    "implementer": "~/.cline-terra",
+    "planner": "~/.cline-sol",
+    "review_planner": "~/.cline-opus",
+    "reviewer": "~/.cline-sonnet"
+  },
+  "repository": "Antonyt80/PandA-bambu",
+  "runtime_defaults": {
+    "controller_validation_timeout_seconds": 3600,
+    "implementation_stage_max_attempts": 2,
+    "inactivity_timeout_seconds": 900,
+    "maximum_cycles": 3,
+    "phase_timeout_seconds": 3600,
+    "publish": true,
+    "restart_cline_daemon_on_key_mismatch": true,
+    "retry_backoff_seconds": 10,
+    "review_duplicate_command_limit": 2,
+    "review_max_iterations": 30,
+    "review_max_tool_calls": 15,
+    "review_stage_max_attempts": 1,
+    "review_zombie_grace_seconds": 120
+  },
+  "schema_version": 2,
+  "title": "PAF bootstrap to governed self-hosting",
+  "version": 3,
+  "architecture_revision": 9,
+  "decision_set": "config/paf-v9/paf-decisions-v9.json"
+}
