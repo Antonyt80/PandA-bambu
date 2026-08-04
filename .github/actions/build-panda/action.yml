@@ -1,0 +1,148 @@
+name: "Panda build"
+description: "Configure, build, and generate Panda Bambu appimage"
+inputs:
+  mode:
+    description: "Action mode: build or fast-regressions"
+    required: false
+    default: "build"
+  config-args:
+    description: "Configure command line arguments"
+    required: false
+    default: ""
+  jobs:
+    description: "Parallel jobs"
+    required: false
+    default: "1"
+  ccache-dir:
+    description: "Workspace-relative compiler cache directory"
+    required: false
+    default: ".ccache"
+  optimized-flags:
+    description: "Optional PANDA_OPTIMIZED_FLAGS CMake cache value"
+    required: false
+    default: ""
+  synthesis-smoke:
+    description: "Run a small Bambu synthesis and Verilator simulation smoke test"
+    required: false
+    default: "false"
+  action-start-epoch:
+    description: "Host epoch immediately before the Docker action, used to measure container setup"
+    required: false
+    default: ""
+outputs:
+  dist-dir:
+    description: "Distribution output directory"
+  compilation-db:
+    description: "Stripped build directory with compile_commands.json and configuration headers"
+  container-setup-seconds:
+    description: "Seconds from host action start until the container entrypoint"
+  configure-seconds:
+    description: "CMake configuration duration in seconds"
+  configure-exit-status:
+    description: "CMake configuration exit status, or not-run"
+  frontend-resolution-seconds:
+    description: "Selected frontend resolution duration in seconds"
+  frontend-resolution-exit-status:
+    description: "Selected frontend resolution exit status, or not-run"
+  plugin-build-seconds:
+    description: "Selected PandA Clang plugin build and verification duration in seconds"
+  plugin-build-exit-status:
+    description: "Selected PandA Clang plugin build and verification exit status, or not-run"
+  project-build-seconds:
+    description: "PandA project build duration in seconds"
+  project-build-exit-status:
+    description: "PandA project build exit status, or not-run"
+  build-seconds:
+    description: "PandA compilation duration in seconds"
+  install-seconds:
+    description: "PandA installation duration in seconds"
+  installation-exit-status:
+    description: "PandA installation exit status, or not-run"
+  cosimulation-seconds:
+    description: "Bambu XML Verilator co-simulation duration in seconds"
+  cosimulation-exit-status:
+    description: "Bambu XML Verilator co-simulation exit status, or not-run"
+  selected-frontend:
+    description: "Frontend compiler selected by the PandA configuration"
+  effective-optimized-flags:
+    description: "Effective PANDA_OPTIMIZED_FLAGS value from the CMake cache"
+  effective-build-type:
+    description: "Effective CMAKE_BUILD_TYPE value from the CMake cache"
+  effective-assertions-enabled:
+    description: "Effective PANDA_ENABLE_ASSERTS value from the CMake cache"
+  effective-warnings-as-errors:
+    description: "Effective PANDA_ENABLE_WERROR value from the CMake cache"
+  cpu-target-profile:
+    description: "Canonical CPU target profile recorded from the effective flags"
+  clang-version:
+    description: "One-line clang version"
+  clangxx-version:
+    description: "One-line clang++ version"
+  llvm-version:
+    description: "One-line LLVM version"
+  cmake-version:
+    description: "One-line CMake version"
+  gcc-version:
+    description: "One-line GCC version"
+  gxx-version:
+    description: "One-line G++ version"
+  ccache-version:
+    description: "One-line ccache version"
+  verilator-version:
+    description: "One-line Verilator version"
+  peak-build-rss-kib:
+    description: "Sampled aggregate resident set size across concurrent PandA build processes in KiB"
+  peak-build-cgroup-kib:
+    description: "Maximum sampled cgroup memory charge during the PandA build in KiB"
+  memory-available-before-kib:
+    description: "Available memory immediately before the PandA build in KiB"
+  memory-available-after-kib:
+    description: "Available memory immediately after the PandA build in KiB"
+  build-exit-status:
+    description: "Exit status of the last PandA build command, or not-run"
+  action-exit-status:
+    description: "Exit status of the complete build action"
+  failure-stage:
+    description: "Action stage that failed, or none"
+  oom-detected:
+    description: "Whether cgroup OOM counters increased during the PandA build"
+  kill-detected:
+    description: "Whether the action or build command exited from a signal"
+  ccache-cacheable-calls:
+    description: "Cacheable compiler calls in this build"
+  ccache-hits:
+    description: "Compiler cache hits in this build"
+  ccache-misses:
+    description: "Compiler cache misses in this build"
+  ccache-hit-rate:
+    description: "Compiler cache hit percentage in this build"
+  ccache-size-kibibyte:
+    description: "Compiler cache size in KiB after the build"
+  regression-results-dir:
+    description: "Workspace-relative directory containing raw fast-regression results"
+  regression-evidence-dir:
+    description: "Workspace-relative directory containing fast-regression evidence"
+  regression-suite-seconds:
+    description: "Fast-regression suite duration in seconds"
+  regression-suite-exit-status:
+    description: "Fast-regression suite exit status, or not-run"
+  regression-suite-outcome:
+    description: "Fast-regression suite outcome: pass, fail, unknown, or not-run"
+  regression-task-count:
+    description: "Number of fast-regression tasks selected"
+  regression-passed-count:
+    description: "Number of passing fast-regression tasks"
+  regression-failed-count:
+    description: "Number of failing fast-regression tasks"
+runs:
+  using: "docker"
+  image: "Dockerfile"
+  env:
+    ACTION_MODE: ${{inputs.mode}}
+    J: ${{inputs.jobs}}
+    CCACHE_DIR_INPUT: ${{inputs.ccache-dir}}
+    PANDA_OPTIMIZED_FLAGS_INPUT: ${{inputs.optimized-flags}}
+    SYNTHESIS_SMOKE: ${{inputs.synthesis-smoke}}
+    ACTION_START_EPOCH: ${{inputs.action-start-epoch}}
+  args:
+    - ${{inputs.config-args}}

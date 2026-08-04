@@ -1,0 +1,255 @@
+#!/usr/bin/env python3
+"""Revise a semantically blocked PAF task from immutable review findings."""
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import importlib.util
+import json
+import os
+from pathlib import Path
+from typing import Any
+
+
+def utc_now() -> str:
+    return dt.datetime.now(dt.timezone.utc).isoformat()
+
+
+def load_json(path: Path) -> dict[str, Any]:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise SystemExit(f"Expected JSON object in {path}")
+    return value
+
+
+def save_json_atomic(path: Path, value: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def load_generator_module(path: Path):
+    spec = importlib.util.spec_from_file_location("paf_cline_next_task_module", path)
+    if spec is None or spec.loader is None:
+        raise SystemExit(f"Cannot load next-task generator: {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--repo", required=True)
+    parser.add_argument("--campaign-config", required=True)
+    parser.add_argument("--task", required=True)
+    parser.add_argument("--metadata", required=True)
+    parser.add_argument("--review", required=True)
+    parser.add_argument("--output-dir", required=True)
+    parser.add_argument("--revision", type=int, required=True)
+    parser.add_argument("--generator")
+    parser.add_argument("--sol-config", default=os.environ.get("PAF_SOL_CONFIG", "~/.cline-sol"))
+    parser.add_argument("--template")
+    parser.add_argument("--phase-timeout", type=int, default=int(os.environ.get("PAF_TASK_REVISION_TIMEOUT", "1800")))
+    parser.add_argument("--inactivity-timeout", type=int, default=int(os.environ.get("PAF_INACTIVITY_TIMEOUT", "900")))
+    parser.add_argument("--thinking", default="xhigh")
+    args = parser.parse_args()
+
+    repo = Path(args.repo).expanduser().resolve()
+    config_path = Path(args.campaign_config).expanduser().resolve()
+    task_path = Path(args.task).expanduser().resolve()
+    metadata_path = Path(args.metadata).expanduser().resolve()
+    review_path = Path(args.review).expanduser().resolve()
+    output_dir = Path(args.output_dir).expanduser().resolve()
+
+    if args.revision < 2:
+        raise SystemExit("A remediated task revision must be at least 2")
+    if not os.environ.get("LITELLM_API_KEY") or not os.environ.get("OPENAI_API_KEY"):
+        raise SystemExit("LITELLM_API_KEY and OPENAI_API_KEY must both be set")
+
+    generator_path = (
+        Path(args.generator).expanduser().resolve()
+        if args.generator
+        else Path(__file__).resolve().parent / "paf-cline-next-task"
+    )
+    if not generator_path.is_file():
+        raise SystemExit(f"Missing next-task generator: {generator_path}")
+    generator = load_generator_module(generator_path)
+
+    config = load_json(config_path)
+    metadata = load_json(metadata_path)
+    review = load_json(review_path)
+    task_markdown = task_path.read_text(encoding="utf-8")
+
+    if review.get("verdict") != "BLOCKED":
+        raise SystemExit("Task remediation requires a BLOCKED semantic review")
+    if review.get("task_id") != metadata.get("task_id"):
+        raise SystemExit("Review is bound to a different task")
+    if review.get("task_contract_digest") != metadata.get("task_contract_digest"):
+        raise SystemExit("Review is bound to a different task digest")
+    if review.get("generated_base_sha") != metadata.get("generated_base_sha"):
+        raise SystemExit("Review is bound to a different base SHA")
+    blocking = [
+        finding for finding in review.get("findings", [])
+        if isinstance(finding, dict) and finding.get("severity") == "blocking"
+    ]
+    if not blocking:
+        raise SystemExit("BLOCKED review contains no blocking findings")
+
+    backlog = {
+        item["id"]: item
+        for item in config.get("backlog", [])
+        if isinstance(item, dict) and isinstance(item.get("id"), str)
+    }
+    item = backlog.get(metadata.get("backlog_item_id"))
+    if not isinstance(item, dict):
+        raise SystemExit("Backlog item is missing from campaign configuration")
+
+    current_base = generator.git(repo, "rev-parse", f"origin/{config['base_branch']}")
+    if current_base != metadata.get("generated_base_sha"):
+        raise SystemExit(
+            "Task base is stale. Supersede and regenerate from the new base rather than remediating."
+        )
+    if generator.git(repo, "status", "--porcelain", "--untracked-files=all"):
+        raise SystemExit("Repository must be clean before task-contract remediation")
+    if generator.git(repo, "branch", "--show-current") != config["base_branch"]:
+        raise SystemExit(f"Task remediation must run from {config['base_branch']}")
+
+    template_path = (
+        Path(args.template).expanduser().resolve()
+        if args.template
+        else Path(__file__).resolve().parent / "templates" / "task-remediation-prompt.md"
+    )
+    if not template_path.is_file():
+        raise SystemExit(f"Missing task-remediation prompt template: {template_path}")
+
+    documents: dict[str, str] = {}
+    for name, relative in config.get("documents", {}).items():
+        path = (repo / relative).resolve()
+        if path.is_file():
+            documents[name] = path.read_text(encoding="utf-8", errors="replace")
+
+    subject = {
+        "campaign_id": config["campaign_id"],
+        "exact_base_sha": metadata["generated_base_sha"],
+        "backlog_item": item,
+        "current_task_revision": metadata.get("task_revision", 1),
+        "requested_task_revision": args.revision,
+        "current_task_contract_digest": metadata["task_contract_digest"],
+        "current_task_metadata": metadata,
+        "current_task_markdown": task_markdown,
+        "blocking_review": review,
+        "authoritative_documents": documents,
+    }
+    prompt = (
+        template_path.read_text(encoding="utf-8")
+        + "\n\n# Immutable remediation subject\n\n```json\n"
+        + json.dumps(subject, indent=2, sort_keys=True)
+        + "\n```\n"
+    )
+
+    timestamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    run_dir = output_dir / "remediation" / f"{metadata['task_id']}-r{args.revision}-{timestamp}"
+    run_dir.mkdir(parents=True, exist_ok=False)
+    prompt_path = run_dir / "prompt.md"
+    jsonl_path = run_dir / "sol.jsonl"
+    stderr_path = run_dir / "sol.stderr.log"
+    text_path = run_dir / "sol.txt"
+    prompt_path.write_text(prompt, encoding="utf-8")
+
+    sol_config = Path(args.sol_config).expanduser().resolve()
+    if not sol_config.is_dir():
+        raise SystemExit(f"Missing Cline Sol configuration directory: {sol_config}")
+
+    permissions = json.dumps(
+        {
+            "deny": [
+                "sudo *", "rm -rf *", "docker *", "podman *", "ssh *", "scp *",
+                "curl *", "wget *", "git add *", "git commit *", "git push *",
+                "git checkout *", "git switch *", "git worktree *", "git reset *",
+                "git clean *", "gh *"
+            ],
+            "allowRedirects": False,
+        },
+        separators=(",", ":"),
+    )
+    env = os.environ.copy()
+    env["CLINE_COMMAND_PERMISSIONS"] = permissions
+    command = [
+        "cline", "--json", "--auto-approve", "true", "--plan",
+        "--timeout", str(args.phase_timeout), "--thinking", args.thinking,
+        "--config", str(sol_config), "--cwd", str(repo), prompt,
+    ]
+    rc = generator.run_cline(
+        command, env, jsonl_path, stderr_path,
+        args.phase_timeout, args.inactivity_timeout,
+    )
+    if rc != 0:
+        raise SystemExit(f"Task remediation failed with exit code {rc}; see {run_dir}")
+
+    text = generator.extract_final_text(jsonl_path)
+    text_path.write_text(text + ("\n" if text and not text.endswith("\n") else ""), encoding="utf-8")
+    status, revised, reason = generator.parse_generated(text)
+    if status == "BLOCKED":
+        result = {
+            "schema_version": 1,
+            "status": "blocked",
+            "task_id": metadata["task_id"],
+            "revision": args.revision,
+            "reason": reason,
+            "remediation_dir": str(run_dir),
+        }
+        save_json_atomic(run_dir / "result.json", result)
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return 2
+
+    assert revised is not None
+    generator.validate_task(revised, config, item)
+
+    immutable_fields = (
+        "campaign_id", "backlog_item_id", "task_id", "milestone",
+        "base_branch", "depends_on",
+    )
+    for field in immutable_fields:
+        if revised.get(field) != metadata.get(field):
+            raise SystemExit(f"Remediation changed immutable field {field}")
+
+    revised["generated_base_sha"] = metadata["generated_base_sha"]
+    revised["backlog_item_digest"] = metadata["backlog_item_digest"]
+    revised["generated_at"] = utc_now()
+    revised["generation_dir"] = str(run_dir)
+    revised["task_revision"] = args.revision
+    revised["supersedes_task_contract_digest"] = metadata["task_contract_digest"]
+    revised["remediation_review_digest"] = review.get("review_record_digest")
+    revised["remediation_finding_ids"] = [
+        finding.get("id") for finding in blocking if finding.get("id")
+    ]
+    digest_input = dict(revised)
+    revised["task_contract_digest"] = generator.typed_digest(
+        "paf-bootstrap-task-contract-v2", digest_input
+    )
+
+    revised_task_path = output_dir / f"{metadata['task_id']}.r{args.revision}.md"
+    revised_metadata_path = output_dir / f"{metadata['task_id']}.r{args.revision}.json"
+    revised_task_path.write_text(revised["task_markdown"].rstrip() + "\n", encoding="utf-8")
+    save_json_atomic(revised_metadata_path, revised)
+
+    result = {
+        "schema_version": 1,
+        "status": "ready",
+        "task_id": metadata["task_id"],
+        "revision": args.revision,
+        "task_path": str(revised_task_path),
+        "metadata_path": str(revised_metadata_path),
+        "task_contract_digest": revised["task_contract_digest"],
+        "supersedes_task_contract_digest": metadata["task_contract_digest"],
+        "remediation_review_digest": review.get("review_record_digest"),
+        "remediation_dir": str(run_dir),
+    }
+    save_json_atomic(run_dir / "result.json", result)
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
