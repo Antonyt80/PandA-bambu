@@ -35,7 +35,7 @@ Work Graph Snapshot / Scheduling / Operations Projections
 
 | Interface | Owner | Operations | Key states/errors | Evidence/authority | Milestone |
 |---|---|---|---|---|---|
-| Logical ID, Revision ID, Typed Digest | identity registry | create, validate, compare, resolve | invalid form, unknown type/version | canonical vectors | R1 |
+| Logical ID, Revision ID, Typed Digest, canonical profile, registry/negotiation, extension and migration envelopes | identity registry | create, validate, compare, canonicalize, negotiate, preserve extension, verify migration/rollback | unvalidated → negotiated → exact-compatible, migration-required, or classified rejection; interpretation follows successful negotiation only | `tests/paf/identity/vectors/paf_identity_v1.json` | R1 |
 | Contract Envelope | contract registry | validate, register, negotiate, migrate | unsupported/unknown version | producer/provenance | R2 |
 | Event and Error Envelope | event service | append, replay, verify, segment | ordering, causality, corruption, truncation | cursor/digest | R2 |
 | Classification and Redaction | security/event gateway | classify, redact, release, deny | secret detected, release denied, policy mismatch | security policy | R2-S |
