@@ -418,6 +418,17 @@ def main() -> int:
     text = extract_final_text(jsonl_path)
     text_path.write_text(text + ("\n" if text and not text.endswith("\n") else ""), encoding="utf-8")
     status, task, reason = parse_generated(text)
+
+    if status == "READY":
+        assert task is not None
+
+        # Controller-owned immutable task identity.
+        task["campaign_id"] = config["campaign_id"]
+        task["backlog_item_id"] = item["id"]
+        task["task_id"] = item["id"]
+        task["milestone"] = item["milestone"]
+        task["base_branch"] = config["base_branch"]
+        task["depends_on"] = item.get("depends_on", [])
     if status == "BLOCKED":
         blocked = {"schema_version": 2, "recorded_at": utc_now(), "status": "blocked",
                    "backlog_item_id": item["id"], "reason": reason, "generation_dir": str(generation_dir)}
