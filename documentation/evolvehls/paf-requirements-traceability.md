@@ -8,7 +8,7 @@ IDs are immutable `PAF-REQ-<FAMILY>-<NNN>` and do not encode versions/milestones
 
 | Requirement ID | Requirement | Source/use cases | Authoritative contract owner | Producers | Consumers | Milestone | Valid fixture | Invalid/adversarial fixture | Semantic invariant | Conformance test | Implementation status |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| PAF-REQ-IDENTITY-001 | Separate logical ID, immutable revision, canonical bytes and typed digest. | [paf-contract-requirements-matrix.md — Canonicalization and digest expectations](paf-contract-requirements-matrix.md#canonicalization-and-digest-expectations); PAF-UC-PROV-001 | 2a Contract Envelope | registry | all contracts | 2a | PF-IDENTITY-001 | NF-IDENTITY-001 | identity-layer-separation | CT-IDENTITY-001 | blocked-decision |
+| PAF-REQ-IDENTITY-001 | Separate logical ID, immutable revision, canonical bytes and typed digest. | [paf-contract-requirements-matrix.md — Canonicalization and digest expectations](paf-contract-requirements-matrix.md#canonicalization-and-digest-expectations); PAF-UC-PROV-001 | 2a Contract Envelope | registry | all contracts | 2a | [PF-IDENTITY-001](../../tests/paf/identity/vectors/paf_identity_v1.json) | [NF-IDENTITY-001](../../tests/paf/identity/vectors/paf_identity_v1.json) | identity-layer-separation (`tests/paf/identity/test_identity.py`) | [CT-IDENTITY-001](../../tests/paf/identity/test_identity.py) | implemented-and-tested |
 | PAF-REQ-AUTHORITY-001 | Charter and grants cover every effect; capability is not authority. | [paf-contract-provenance-plan.md — Authority and governed autonomy](paf-contract-provenance-plan.md#authority-and-governed-autonomy); PAF-UC-CODE-002, PAF-UC-CODE-007 | 2c Charter/Policy Decision | authority/policy | controller | 2c | PF-AUTHORITY-001 | NF-AUTHORITY-001 | authority-monotonicity | CT-AUTHORITY-001 | specified |
 | PAF-REQ-WORK-001 | Only accepted mutations alter authorized Work Items/dependencies. | [paf-contract-provenance-plan.md — Graphs, planning, and APIs](paf-contract-provenance-plan.md#graphs-planning-and-apis); PAF-UC-CODE-005 | 3b Work Graph Mutation | controller | scheduler | 3b | PF-WORK-001 | NF-WORK-001 | snapshot-non-authority | CT-WORK-001 | specified |
 | PAF-REQ-PLANNING-001 | Triggered planning produces proposal, assessment and authorized mutation only. | [paf-contract-provenance-plan.md — Graphs, planning, and APIs](paf-contract-provenance-plan.md#graphs-planning-and-apis); PAF-UC-CODE-001, PAF-UC-CODE-005 | 3f Planning Cycle | planner/critic | controller | 3f | PF-PLANNING-001 | NF-PLANNING-001 | planner-proposes-only | CT-PLANNING-001 | planned |
@@ -38,11 +38,11 @@ IDs are immutable `PAF-REQ-<FAMILY>-<NNN>` and do not encode versions/milestones
 
 | Decision ID | Affected requirements | Decision owner | Blocking milestone | Alternatives | Required resolution evidence |
 |---|---|---|---|---|---|
-| PAF-DEC-001 | IDENTITY-001 | PAF architecture authority | 2a completion | namespace spellings | registered namespace and migration sample |
-| PAF-DEC-002 | IDENTITY-001 | PAF architecture authority | 2a completion | canonical JSON profiles | Unicode/numeric rules and vectors |
-| PAF-DEC-003 | IDENTITY-001 | PAF architecture authority | 2a completion | ID/digest formats | positive/negative reference vectors |
-| PAF-DEC-004 | IDENTITY-001, API-001 | PAF architecture authority | 2a completion | negotiation/registry behaviors | compatibility and reject vectors |
-| PAF-DEC-005 | IDENTITY-001 | PAF architecture authority | 2a completion | migration envelope/vector languages | migration fixtures and implementation plan |
+| PAF-DEC-001 | IDENTITY-001 | PAF architecture authority | resolved R1 | namespace spellings | [wire identity § Decisions](paf-wire-identity-and-canonical-form.md#decisions); vectors |
+| PAF-DEC-002 | IDENTITY-001 | PAF architecture authority | resolved R1 | canonical JSON profiles | [wire identity § Decisions](paf-wire-identity-and-canonical-form.md#decisions); vectors |
+| PAF-DEC-003 | IDENTITY-001 | PAF architecture authority | resolved R1 | ID/digest formats | [wire identity § Decisions](paf-wire-identity-and-canonical-form.md#decisions); vectors |
+| PAF-DEC-004 | IDENTITY-001, API-001 | PAF architecture authority | resolved R1 | negotiation/registry behaviors | [wire identity § Decisions](paf-wire-identity-and-canonical-form.md#decisions); vectors |
+| PAF-DEC-005 | IDENTITY-001 | PAF architecture authority | resolved R1 | migration envelope/vector languages | [wire identity § Decisions](paf-wire-identity-and-canonical-form.md#decisions); vectors |
 | PAF-DEC-006 | AUTHORITY-001 | security governance | 2c completion | signing/trust models | trust/rotation/revocation design |
 | PAF-DEC-007 | POLICY-001, STORAGE-001, SCHEDULER-001 | operations architecture authority | 5/05B completion | replaceable engine/backend/algorithm choices | implementation selection record |
 | PAF-DEC-008 | FEDERATION-001, SECURITY-001 | security/federation governance | 5e/07/08 completion | extension/federation trust models | threat model and interoperability review |
