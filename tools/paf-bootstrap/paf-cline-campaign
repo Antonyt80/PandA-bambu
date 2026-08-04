@@ -13,6 +13,8 @@ import sys
 from pathlib import Path
 from typing import Any, Iterator
 
+from validation_policy import write_manifest
+
 
 def utc_now() -> str:
     return dt.datetime.now(dt.timezone.utc).isoformat()
@@ -127,10 +129,9 @@ def reconcile(repo: Path, config: dict[str, Any], state: dict[str, Any]) -> int:
     return count
 
 
-def write_validation_file(root: Path, task_id: str, commands: list[str]) -> Path:
-    path = root / "validation" / f"{task_id}.sh"; path.parent.mkdir(parents=True, exist_ok=True)
-    lines = ["#!/usr/bin/env bash", "set -Eeuo pipefail", ""] + commands
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8"); path.chmod(0o700)
+def write_validation_manifest(root: Path, task_id: str, commands: list[str]) -> Path:
+    path = root / "validation" / f"{task_id}.json"
+    write_manifest(path, commands)
     return path
 
 
@@ -432,7 +433,8 @@ def main() -> int:
             if runtime.get("publish", True): pre.append("--publish")
             if runtime.get("restart_cline_daemon_on_key_mismatch", True): pre.append("--restart-daemon-on-key-mismatch")
             if subprocess.run(pre, env=env, check=False).returncode: raise SystemExit("Bootstrap preflight failed")
-            validation_file = write_validation_file(root, task["task_id"], metadata["validation_commands"])
+            validation_manifest = write_validation_manifest(root, task["task_id"], metadata["validation_commands"])
+            validation_runner = scripts / "paf-validation-runner"
             result_path = root / "cycle-results" / f"{task['task_id']}.json"; result_path.parent.mkdir(parents=True, exist_ok=True)
             env.update({
                 "PAF_REPO": str(repo), "PAF_PARENT_CAMPAIGN_ID": config["campaign_id"], "PAF_TASK_ID": task["task_id"],
@@ -444,7 +446,8 @@ def main() -> int:
                 "PAF_RETRY_BACKOFF": str(runtime["retry_backoff_seconds"]), "PAF_REVIEW_MAX_TOOL_CALLS": str(metadata["runtime_budget"]["review_max_tool_calls"]),
                 "PAF_REVIEW_MAX_ITERATIONS": str(runtime["review_max_iterations"]), "PAF_REVIEW_DUPLICATE_COMMAND_LIMIT": str(runtime["review_duplicate_command_limit"]),
                 "PAF_REVIEW_ZOMBIE_GRACE_SECONDS": str(runtime["review_zombie_grace_seconds"]), "PAF_PUBLISH": "1" if runtime.get("publish", True) else "0",
-                "PAF_PRECOMMIT_VALIDATION_FILE": str(validation_file), "PAF_PRECOMMIT_VALIDATION_TIMEOUT": str(runtime["controller_validation_timeout_seconds"]),
+                "PAF_PRECOMMIT_VALIDATION_MANIFEST": str(validation_manifest), "PAF_VALIDATION_RUNNER": str(validation_runner),
+                "PAF_PRECOMMIT_VALIDATION_TIMEOUT": str(runtime["controller_validation_timeout_seconds"]),
                 "PAF_RESULT_FILE": str(result_path), "PAF_GITHUB_REPO": config["repository"],
             })
             local_exists = subprocess.run(["git", "-C", str(repo), "show-ref", "--verify", "--quiet", f"refs/heads/{metadata['branch']}"], check=False).returncode == 0

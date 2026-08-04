@@ -16,21 +16,12 @@ import time
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+from validation_policy import ValidationAuthorizationError, authorize_validation_command
+
 STATUS_TAG = "TASK_GENERATION_STATUS"
 JSON_BEGIN = "<PAF_NEXT_TASK_JSON>"
 JSON_END = "</PAF_NEXT_TASK_JSON>"
 ACTIVE_STATUSES = {"generated", "authorized", "running", "approved", "blocked", "failed", "review_interrupted"}
-FORBIDDEN_COMMAND_TOKENS = (";", "&&", "||", "`", "$(", ">", "<", "\n", "\r", "\x00")
-FORBIDDEN_COMMAND_WORDS = (
-    "curl ", "wget ", "ssh ", "scp ", "sudo ", "docker ", "podman ",
-    "git push", "git commit", "git reset", "git clean", "gh ", "rm -rf",
-)
-ALLOWED_VALIDATION_PREFIXES = (
-    "git diff --check", "python3 ", "python ", "pytest ", "ctest", "ninja", "make",
-    "cmake ", "bash tools/", "./tools/", "bash scripts/", "./scripts/",
-)
-
-
 def utc_now() -> str:
     return dt.datetime.now(dt.timezone.utc).isoformat()
 
@@ -274,13 +265,10 @@ def path_is_authorized(candidate: str, expected: list[str]) -> bool:
 
 
 def validate_validation_command(command: str) -> None:
-    if not command.strip() or any(token in command for token in FORBIDDEN_COMMAND_TOKENS):
-        raise SystemExit(f"Unsafe validation command syntax: {command!r}")
-    lower = command.lower().strip()
-    if any(word in lower for word in FORBIDDEN_COMMAND_WORDS):
-        raise SystemExit(f"Forbidden validation command: {command!r}")
-    if not any(lower == prefix.rstrip() or lower.startswith(prefix) for prefix in ALLOWED_VALIDATION_PREFIXES):
-        raise SystemExit(f"Unsupported validation command prefix: {command!r}")
+    try:
+        authorize_validation_command(command)
+    except ValidationAuthorizationError as exc:
+        raise SystemExit(str(exc)) from exc
 
 
 def validate_task(task: dict[str, Any], config: dict[str, Any], item: dict[str, Any]) -> None:

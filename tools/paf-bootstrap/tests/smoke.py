@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -39,6 +40,8 @@ class BundleSmoke(unittest.TestCase):
             "tools/paf-bootstrap/paf-cline-monitor",
             "tools/paf-bootstrap/paf-cline-preflight",
             "tools/paf-bootstrap/paf-cline-review-resume",
+            "tools/paf-bootstrap/paf-validation-runner",
+            "tools/paf-bootstrap/validation_policy.py",
         ]
         missing = [path for path in required if not (self.root / path).is_file()]
         self.assertEqual([], missing)
@@ -72,9 +75,131 @@ class BundleSmoke(unittest.TestCase):
         cycle = self.root / "tools/paf-bootstrap/paf-cline-cycle"
         result = subprocess.run(["bash", "-n", str(cycle)], check=False)
         self.assertEqual(0, result.returncode)
-        for name in ("paf-cline-next-task", "paf-cline-campaign", "paf-cline-monitor", "paf-cline-preflight", "paf-cline-review-resume"):
+        for name in (
+            "paf-cline-next-task", "paf-cline-campaign", "paf-cline-monitor",
+            "paf-cline-preflight", "paf-cline-review-resume", "paf-validation-runner",
+            "validation_policy.py",
+        ):
             result = subprocess.run(["python3", "-m", "py_compile", str(self.root / "tools/paf-bootstrap" / name)], check=False)
             self.assertEqual(0, result.returncode, name)
+
+    def test_node_validation_authorization(self) -> None:
+        import sys
+
+        sys.path.insert(0, str(self.root / "tools/paf-bootstrap"))
+        try:
+            from validation_policy import ValidationAuthorizationError, authorize_validation_command
+
+            for command, suffix in (
+                ("node tests/paf/identity/verify_vectors.mjs", ".mjs"),
+                ("node tests/paf/identity/example.js", ".js"),
+                ("node scripts/paf/example.cjs", ".cjs"),
+            ):
+                authorized = authorize_validation_command(command)
+                self.assertEqual("node", authorized.executable)
+                self.assertEqual("node-approved-repository-script-v1", authorized.authorization_rule)
+                self.assertTrue(authorized.normalized_paths[0].endswith(suffix))
+            for command in (
+                "node ../verify_vectors.mjs",
+                "node /tmp/verify_vectors.mjs",
+                "node tests/paf/identity/verify_vectors.mjs && echo unsafe",
+                "node tests/paf/identity/verify_vectors.mjs; echo unsafe",
+                'node -e "process.exit(0)"',
+                "node arbitrary-script.mjs",
+                "node tests/paf/identity/verify_vectors.mjs unexpected-argument",
+            ):
+                with self.assertRaises(ValidationAuthorizationError, msg=command):
+                    authorize_validation_command(command)
+        finally:
+            sys.path.pop(0)
+
+    def test_node_scripts_via_validation_runner(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            (repo / "tests/paf/identity").mkdir(parents=True)
+            (repo / "scripts/paf").mkdir(parents=True)
+            for relative in (
+                "tests/paf/identity/verify_vectors.mjs",
+                "tests/paf/identity/verify_vectors.js",
+                "scripts/paf/verify_vectors.cjs",
+            ):
+                (repo / relative).write_text("process.exit(0);\n", encoding="utf-8")
+            manifest = Path(tmp) / "validation.json"
+            audit = Path(tmp) / "audit.json"
+            manifest.write_text(
+                json.dumps({
+                    "schema_version": 1,
+                    "commands": [
+                        "node tests/paf/identity/verify_vectors.mjs",
+                        "node tests/paf/identity/verify_vectors.js",
+                        "node scripts/paf/verify_vectors.cjs",
+                    ],
+                }),
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                [
+                    "python3", str(self.root / "tools/paf-bootstrap/paf-validation-runner"),
+                    "--repo", str(repo), "--manifest", str(manifest), "--audit", str(audit),
+                ],
+                text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+            )
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            records = json.loads(audit.read_text(encoding="utf-8"))["commands"]
+            self.assertEqual(3, len(records))
+            self.assertEqual(
+                [
+                    "tests/paf/identity/verify_vectors.mjs",
+                    "tests/paf/identity/verify_vectors.js",
+                    "scripts/paf/verify_vectors.cjs",
+                ],
+                [record["normalized_paths"][0] for record in records],
+            )
+            for record in records:
+                self.assertEqual("node", record["executable"])
+                self.assertEqual("node-approved-repository-script-v1", record["authorization_rule"])
+                self.assertEqual(0, record["exit_status"])
+
+    def test_identity_vectors_via_validation_runner(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            shutil.copytree(self.root / "tests", repo / "tests")
+            shutil.copytree(self.root / "paf", repo / "paf")
+            manifest = Path(tmp) / "validation.json"
+            audit = Path(tmp) / "audit.json"
+            manifest.write_text(
+                json.dumps({
+                    "schema_version": 1,
+                    "commands": ["node tests/paf/identity/verify_vectors.mjs"],
+                }),
+                encoding="utf-8",
+            )
+            runner = [
+                "python3", str(self.root / "tools/paf-bootstrap/paf-validation-runner"),
+                "--repo", str(repo), "--manifest", str(manifest), "--audit", str(audit),
+            ]
+            result = subprocess.run(
+                runner, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+            )
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            record = json.loads(audit.read_text(encoding="utf-8"))["commands"][0]
+            self.assertEqual("node", record["executable"])
+            self.assertEqual(["tests/paf/identity/verify_vectors.mjs"], record["arguments"])
+            self.assertEqual("node-approved-repository-script-v1", record["authorization_rule"])
+            self.assertEqual(["tests/paf/identity/verify_vectors.mjs"], record["normalized_paths"])
+            self.assertEqual(0, record["exit_status"])
+
+            fixture = repo / "tests/paf/identity/vectors/paf_identity_v1.json"
+            data = json.loads(fixture.read_text(encoding="utf-8"))
+            data["digests"][0]["wire"] = data["digests"][0]["wire"][:-1] + "0"
+            fixture.write_text(json.dumps(data), encoding="utf-8")
+            result = subprocess.run(
+                runner, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+            )
+            self.assertNotEqual(0, result.returncode)
+            record = json.loads(audit.read_text(encoding="utf-8"))["commands"][0]
+            self.assertEqual("node", record["executable"])
+            self.assertNotEqual(0, record["exit_status"])
 
     def test_next_task_list_eligible(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -192,10 +317,15 @@ print(json.dumps({"type": "run_result", "finishReason": "completed", "text": fin
                     "PAF_PUBLISH": "0",
                     "PAF_STAGE_MAX_ATTEMPTS": "1",
                     "PAF_REVIEW_STAGE_MAX_ATTEMPTS": "1",
-                    "PAF_PRECOMMIT_VALIDATION_CMD": "test -f implemented.txt",
+                    "PAF_PRECOMMIT_VALIDATION_MANIFEST": str(root / "validation.json"),
+                    "PAF_VALIDATION_RUNNER": str(self.root / "tools/paf-bootstrap/paf-validation-runner"),
                     "PAF_STATE_ROOT": str(state_root),
                     "PAF_GLOBAL_LOG": str(root / "global.log"),
                 }
+            )
+            (root / "validation.json").write_text(
+                json.dumps({"schema_version": 1, "commands": ["git diff --check"]}),
+                encoding="utf-8",
             )
             result = subprocess.run(
                 [str(self.root / "tools/paf-bootstrap/paf-cline-cycle"), str(task)],
@@ -211,6 +341,9 @@ print(json.dumps({"type": "run_result", "finishReason": "completed", "text": fin
             summary = json.loads((latest / "run-summary.json").read_text(encoding="utf-8"))
             self.assertEqual("approved", summary["status"])
             self.assertEqual("sonnet-1", summary["role"])
+            audit = json.loads((latest / "cycle-1-controller-validation.audit.json").read_text(encoding="utf-8"))
+            self.assertEqual("git", audit["commands"][0]["executable"])
+            self.assertEqual(0, audit["commands"][0]["exit_status"])
             self.assertEqual("implemented\n", (repo / "implemented.txt").read_text(encoding="utf-8"))
             status = subprocess.run(
                 ["git", "-C", str(repo), "status", "--porcelain"],
