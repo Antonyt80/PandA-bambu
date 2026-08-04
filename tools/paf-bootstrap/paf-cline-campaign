@@ -111,7 +111,7 @@ def task_record(metadata: dict[str, Any], task_path: Path, metadata_path: Path) 
             "metadata_path": str(metadata_path), "task_contract_digest": metadata["task_contract_digest"],
             "generated_base_sha": metadata["generated_base_sha"], "status": "generated",
             "generated_at": metadata.get("generated_at", utc_now()), "head_sha": None, "pr_number": None,
-            "cycle_state_dir": None, "cycle_result_path": None, "last_reason": None}
+            "cycle_state_dir": None, "cycle_result_path": None, "last_reason": None, "task_review_path": None, "task_review_digest": None, "task_review_summary": None, "task_revision": int(metadata.get("task_revision", 1)), "task_revisions": [], "task_reviews": [], "remediation_count": 0}
 
 
 def reconcile(repo: Path, config: dict[str, Any], state: dict[str, Any]) -> int:
@@ -152,7 +152,8 @@ def command_status(config: dict[str, Any], state: dict[str, Any], state_path: Pa
     print(f"Completed: {', '.join(state.get('completed_backlog_items', [])) or 'none'}")
     current = active_task(state)
     if current:
-        print(f"Current: {current['task_id']} [{current.get('status')}] branch={current.get('branch')} head={current.get('head_sha') or '-'} pr={current.get('pr_number') or '-'}")
+        print(f"Current: {current['task_id']} r{current.get('task_revision', 1)} [{current.get('status')}] branch={current.get('branch')} head={current.get('head_sha') or '-'} pr={current.get('pr_number') or '-'}")
+        print(f"Task reviews retained: {len(current.get('task_reviews', []))}; remediations: {current.get('remediation_count', 0)}")
         if current.get("last_reason"): print(f"Reason: {current['last_reason']}")
     else: print("Current: none")
     completed = set(state.get("completed_backlog_items", []))
@@ -173,12 +174,15 @@ def main() -> int:
     parser.add_argument("--config", default="config/paf-bootstrap-campaign.json")
     parser.add_argument("--state"); parser.add_argument("--tasks-dir"); parser.add_argument("--cycle")
     parser.add_argument("--generator"); parser.add_argument("--monitor"); parser.add_argument("--preflight")
-    parser.add_argument("--review-resume")
+    parser.add_argument("--review-resume"); parser.add_argument("--task-reviewer"); parser.add_argument("--task-reviser")
     sub = parser.add_subparsers(dest="command", required=True)
     init = sub.add_parser("init"); init.add_argument("--force", action="store_true"); init.add_argument("--complete", action="append", default=[])
     sub.add_parser("status")
     watch = sub.add_parser("watch"); watch.add_argument("--interval", type=float, default=5.0)
-    nxt = sub.add_parser("next"); nxt.add_argument("--backlog-id")
+    nxt = sub.add_parser("next"); nxt.add_argument("--backlog-id"); nxt.add_argument("--skip-task-review", action="store_true")
+    review_task = sub.add_parser("review-task"); review_task.add_argument("--task-id")
+    sub.add_parser("task-review")
+    revise_task = sub.add_parser("revise-task"); revise_task.add_argument("--task-id"); revise_task.add_argument("--max-revisions", type=int, default=2)
     auth = sub.add_parser("authorize"); auth.add_argument("--task-id")
     run_cmd = sub.add_parser("run"); run_cmd.add_argument("--authorize", action="store_true")
     sub.add_parser("retry")
@@ -202,8 +206,57 @@ def main() -> int:
     monitor = Path(args.monitor).expanduser().resolve() if args.monitor else scripts / "paf-cline-monitor"
     preflight = Path(args.preflight).expanduser().resolve() if args.preflight else scripts / "paf-cline-preflight"
     review_resume = Path(args.review_resume).expanduser().resolve() if args.review_resume else scripts / "paf-cline-review-resume"
+    task_reviewer = Path(args.task_reviewer).expanduser().resolve() if args.task_reviewer else scripts / "paf-cline-task-review"
+    task_reviser = Path(args.task_reviser).expanduser().resolve() if args.task_reviser else scripts / "paf-cline-task-revise"
+
+    def record_task_review(task: dict[str, Any], review_obj: dict[str, Any], review_path: Path) -> None:
+        task["task_review_path"] = str(review_path)
+        task["task_review_digest"] = review_obj.get("review_record_digest")
+        task["task_review_summary"] = review_obj.get("summary")
+        task["status"] = "reviewed-approved" if review_obj.get("verdict") == "APPROVED" else "reviewed-blocked"
+        task["last_reason"] = review_obj.get("summary")
+        task.setdefault("task_reviews", []).append({
+            "recorded_at": utc_now(),
+            "task_revision": int(task.get("task_revision", 1)),
+            "task_contract_digest": review_obj.get("task_contract_digest"),
+            "review_record_digest": review_obj.get("review_record_digest"),
+            "review_path": str(review_path),
+            "verdict": review_obj.get("verdict"),
+            "summary": review_obj.get("summary"),
+            "review_attempt_dir": review_obj.get("review_attempt_dir"),
+        })
+
+    def run_task_review(task: dict[str, Any]) -> tuple[int, dict[str, Any] | None]:
+        review_root = tasks_dir / "task-reviews"
+        command = [
+            str(task_reviewer), "--repo", str(repo), "--campaign-config", str(config_path),
+            "--task", task["task_path"], "--metadata", task["metadata_path"],
+            "--output-dir", str(review_root),
+        ]
+        result = subprocess.run(command, text=True, stdout=subprocess.PIPE, check=False)
+        if result.stdout:
+            print(result.stdout, end="")
+        payload = None
+        if result.stdout.strip():
+            try:
+                payload = json.loads(result.stdout)
+            except json.JSONDecodeError:
+                payload = None
+        return result.returncode, payload
 
     if args.command == "watch": return subprocess.run([str(monitor), "watch", "--interval", str(args.interval)], check=False).returncode
+    if args.command == "task-review":
+        if not state_path.exists():
+            raise SystemExit("Campaign is not initialized")
+        state = load_json(state_path)
+        task = active_task(state)
+        if not task:
+            raise SystemExit("No active task")
+        path = task.get("task_review_path")
+        if not path or not Path(path).is_file():
+            raise SystemExit("No task review is available")
+        print(Path(path).read_text(encoding="utf-8"), end="")
+        return 0
     if args.command == "status":
         if not state_path.exists(): raise SystemExit("Campaign is not initialized")
         return command_status(config, load_json(state_path), state_path)
@@ -230,19 +283,135 @@ def main() -> int:
             generated = json.loads(result.stdout); metadata_path = Path(generated["metadata_path"]); task_path = Path(generated["task_path"])
             metadata = load_json(metadata_path); record = task_record(metadata, task_path, metadata_path)
             state.setdefault("tasks", {})[record["task_id"]] = record; state["current_task_id"] = record["task_id"]
-            save_json(state_path, state); print(f"Generated task: {task_path}\nAuthorize after review with: {Path(sys.argv[0]).name} authorize")
-            return 0
+            save_json(state_path, state)
+            print(f"Generated task: {task_path}")
+            if args.skip_task_review:
+                print("Independent task review was explicitly skipped; authorization remains unavailable until review-task succeeds.")
+                return 0
+            rc, review = run_task_review(record)
+            if review:
+                record["task_review_path"] = review.get("review_json")
+                record["task_review_summary"] = review.get("summary")
+            review_path = Path(record["task_path"]).with_suffix(".review.json")
+            if review_path.is_file():
+                review_obj = load_json(review_path)
+                record_task_review(record, review_obj, review_path)
+            else:
+                record["status"] = "review-failed"
+                record["last_reason"] = f"task review exited {rc} without a review record"
+            save_json(state_path, state)
+            if record["status"] == "reviewed-approved":
+                print(f"Independent task review: APPROVED\nAuthorize with: {Path(sys.argv[0]).name} authorize")
+                return 0
+            print(f"Independent task review did not approve the task: {record['status']}")
+            return rc or 2
 
         task = active_task(state)
+        if args.command == "review-task":
+            if not task or (args.task_id and args.task_id != task["task_id"]):
+                raise SystemExit("No matching active task")
+            if task.get("status") not in {"generated", "review-failed", "reviewed-blocked"}:
+                raise SystemExit(f"Task cannot be reviewed from {task.get('status')}")
+            rc, review = run_task_review(task)
+            review_path = Path(task["task_path"]).with_suffix(".review.json")
+            if review_path.is_file():
+                review_obj = load_json(review_path)
+                record_task_review(task, review_obj, review_path)
+            else:
+                task["status"] = "review-failed"
+                task["last_reason"] = f"task review exited {rc} without a review record"
+            save_json(state_path, state)
+            return 0 if task["status"] == "reviewed-approved" else (rc or 2)
+
+        if args.command == "revise-task":
+            if not task or (args.task_id and args.task_id != task["task_id"]):
+                raise SystemExit("No matching active task")
+            if task.get("status") != "reviewed-blocked":
+                raise SystemExit(f"Task remediation requires reviewed-blocked, not {task.get('status')}")
+            current_count = int(task.get("remediation_count", 0))
+            if current_count >= args.max_revisions:
+                raise SystemExit(
+                    f"Task reached remediation limit ({current_count}/{args.max_revisions}); human specification revision is required"
+                )
+            review_path = task.get("task_review_path")
+            if not review_path or not Path(review_path).is_file():
+                raise SystemExit("Blocked task has no durable review record")
+            ensure_clean(repo)
+            next_revision = int(task.get("task_revision", 1)) + 1
+            command = [
+                str(task_reviser),
+                "--repo", str(repo),
+                "--campaign-config", str(config_path),
+                "--task", task["task_path"],
+                "--metadata", task["metadata_path"],
+                "--review", review_path,
+                "--output-dir", str(tasks_dir),
+                "--revision", str(next_revision),
+                "--generator", str(generator),
+            ]
+            task["status"] = "revision-pending"
+            task["last_reason"] = f"remediating blocked review into revision {next_revision}"
+            add_action(state, "revise-task", task["task_id"], task.get("task_review_digest"))
+            save_json(state_path, state)
+            result = subprocess.run(command, text=True, stdout=subprocess.PIPE, check=False)
+            if result.stdout:
+                print(result.stdout, end="")
+            if result.returncode:
+                task["status"] = "revision-failed"
+                task["last_reason"] = f"task remediation exited {result.returncode}"
+                save_json(state_path, state)
+                return result.returncode
+            revised = json.loads(result.stdout)
+            old_revision = {
+                "revision": int(task.get("task_revision", 1)),
+                "task_path": task["task_path"],
+                "metadata_path": task["metadata_path"],
+                "task_contract_digest": task["task_contract_digest"],
+                "review_path": task.get("task_review_path"),
+                "review_digest": task.get("task_review_digest"),
+                "review_summary": task.get("task_review_summary"),
+                "superseded_at": utc_now(),
+            }
+            task.setdefault("task_revisions", []).append(old_revision)
+            task["task_revision"] = next_revision
+            task["task_path"] = revised["task_path"]
+            task["metadata_path"] = revised["metadata_path"]
+            task["task_contract_digest"] = revised["task_contract_digest"]
+            task["task_review_path"] = None
+            task["task_review_digest"] = None
+            task["task_review_summary"] = None
+            task["remediation_count"] = current_count + 1
+            task["status"] = "generated"
+            task["last_reason"] = f"task revision {next_revision} generated from blocked review"
+            save_json(state_path, state)
+
+            rc, _review_payload = run_task_review(task)
+            new_review_path = Path(task["task_path"]).with_suffix(".review.json")
+            if new_review_path.is_file():
+                review_obj = load_json(new_review_path)
+                record_task_review(task, review_obj, new_review_path)
+            else:
+                task["status"] = "review-failed"
+                task["last_reason"] = f"task review exited {rc} without a review record"
+            save_json(state_path, state)
+            if task["status"] == "reviewed-approved":
+                print(
+                    f"Task revision {next_revision} independently APPROVED\n"
+                    f"Authorize with: {Path(sys.argv[0]).name} authorize"
+                )
+                return 0
+            print(f"Task revision {next_revision} was not approved: {task['status']}")
+            return rc or 2
+
         if args.command == "authorize":
             if not task or (args.task_id and args.task_id != task["task_id"]): raise SystemExit("No matching active task")
-            if task.get("status") != "generated": raise SystemExit(f"Task cannot be authorized from {task.get('status')}")
+            if task.get("status") != "reviewed-approved": raise SystemExit(f"Task cannot be authorized from {task.get('status')}; independent task approval is required")
             task["status"] = "authorized"; task["authorized_at"] = utc_now(); add_action(state, "authorize-task", task["task_id"], task.get("task_contract_digest")); save_json(state_path, state)
             print(f"Authorized {task['task_id']}"); return 0
 
         if args.command in {"run", "retry"}:
             if not task: raise SystemExit("No active task")
-            if args.command == "run" and args.authorize and task.get("status") == "generated":
+            if args.command == "run" and args.authorize and task.get("status") == "reviewed-approved":
                 task["status"] = "authorized"; task["authorized_at"] = utc_now(); add_action(state, "authorize-task", task["task_id"], "--authorize")
             if args.command == "retry" and task.get("status") not in {"blocked", "failed"}: raise SystemExit(f"Cannot retry from {task.get('status')}")
             if task.get("status") not in {"authorized", "blocked", "failed"}: raise SystemExit(f"Task is not runnable from {task.get('status')}")
