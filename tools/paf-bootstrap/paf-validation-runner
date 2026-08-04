@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+"""Execute a controller-owned validation manifest without a shell."""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+from validation_policy import (
+    ValidationAuthorizationError,
+    authorize_validation_command,
+    execute_authorized_command,
+    load_manifest,
+    write_audit,
+)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--repo", required=True)
+    parser.add_argument("--manifest", required=True)
+    parser.add_argument("--audit", required=True)
+    args = parser.parse_args()
+
+    repo = Path(args.repo).resolve()
+    records: list[dict[str, object]] = []
+    status = 0
+    try:
+        commands = load_manifest(Path(args.manifest))
+        for source in commands:
+            authorized = authorize_validation_command(source)
+            result = execute_authorized_command(authorized, repo)
+            records.append(authorized.audit_record(result.returncode))
+            if result.stdout:
+                sys.stdout.write(result.stdout)
+            if result.returncode != 0:
+                status = result.returncode
+                break
+    except (ValidationAuthorizationError, FileNotFoundError) as exc:
+        records.append({"authorization_error": str(exc)})
+        print(f"Validation authorization failed: {exc}", file=sys.stderr)
+        status = 2
+    finally:
+        write_audit(Path(args.audit), records)
+    return status
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

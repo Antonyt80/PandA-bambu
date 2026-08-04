@@ -35,8 +35,8 @@ INITIAL_PLAN_FILE="${PAF_INITIAL_PLAN_FILE:-}"
 TASK_METADATA_FILE="${PAF_TASK_METADATA_FILE:-}"
 PUBLISH="${PAF_PUBLISH:-1}"
 
-PRECOMMIT_VALIDATION_CMD="${PAF_PRECOMMIT_VALIDATION_CMD:-}"
-PRECOMMIT_VALIDATION_FILE="${PAF_PRECOMMIT_VALIDATION_FILE:-}"
+PRECOMMIT_VALIDATION_MANIFEST="${PAF_PRECOMMIT_VALIDATION_MANIFEST:-}"
+VALIDATION_RUNNER="${PAF_VALIDATION_RUNNER:-}"
 PRECOMMIT_VALIDATION_TIMEOUT="${PAF_PRECOMMIT_VALIDATION_TIMEOUT:-3600}"
 
 REVIEW_STAGE_MAX_ATTEMPTS="${PAF_REVIEW_STAGE_MAX_ATTEMPTS:-1}"
@@ -691,8 +691,10 @@ fi
 [[ "$REVIEW_ZOMBIE_GRACE_SECONDS" =~ ^[1-9][0-9]*$ ]] || die "PAF_REVIEW_ZOMBIE_GRACE_SECONDS must be positive"
 [[ -n "${LITELLM_API_KEY:-}" ]] || die "LITELLM_API_KEY is missing"
 [[ -n "${OPENAI_API_KEY:-}" ]] || die "OPENAI_API_KEY is missing"
-[[ -z "$PRECOMMIT_VALIDATION_CMD" || -z "$PRECOMMIT_VALIDATION_FILE" ]] || die "Use only one of PAF_PRECOMMIT_VALIDATION_CMD or PAF_PRECOMMIT_VALIDATION_FILE"
-if [[ -n "$PRECOMMIT_VALIDATION_FILE" ]]; then [[ -f "$PRECOMMIT_VALIDATION_FILE" ]] || die "PAF_PRECOMMIT_VALIDATION_FILE not found: $PRECOMMIT_VALIDATION_FILE"; fi
+if [[ -n "$PRECOMMIT_VALIDATION_MANIFEST" ]]; then
+  [[ -f "$PRECOMMIT_VALIDATION_MANIFEST" ]] || die "PAF_PRECOMMIT_VALIDATION_MANIFEST not found: $PRECOMMIT_VALIDATION_MANIFEST"
+  [[ -n "$VALIDATION_RUNNER" && -f "$VALIDATION_RUNNER" ]] || die "PAF_VALIDATION_RUNNER must name an existing runner"
+fi
 if [[ -n "$TASK_METADATA_FILE" ]]; then [[ -f "$TASK_METADATA_FILE" ]] || die "PAF_TASK_METADATA_FILE not found: $TASK_METADATA_FILE"; fi
 validate_bool PAF_CONTINUE_BRANCH "$CONTINUE_BRANCH"
 validate_bool PAF_ADOPT_DIRTY_WORKTREE "$ADOPT_DIRTY_WORKTREE"
@@ -752,7 +754,7 @@ log "Inactivity timeout: ${INACTIVITY_TIMEOUT}s"
 log "Continue existing branch: $CONTINUE_BRANCH"
 log "Adopt preserved dirty worktree: $ADOPT_DIRTY_WORKTREE"
 log "Publish: $PUBLISH"
-if [[ -n "$PRECOMMIT_VALIDATION_CMD" || -n "$PRECOMMIT_VALIDATION_FILE" ]]; then
+if [[ -n "$PRECOMMIT_VALIDATION_MANIFEST" ]]; then
   log "Controller-owned pre-commit validation: configured (${PRECOMMIT_VALIDATION_TIMEOUT}s timeout)"
 else
   log "Controller-owned pre-commit validation: not configured"
@@ -930,20 +932,16 @@ for ((cycle=1; cycle<=MAX_CYCLES; cycle++)); do
   fi
   git -C "$REPO" diff --check
 
-  if [[ -n "$PRECOMMIT_VALIDATION_CMD" || -n "$PRECOMMIT_VALIDATION_FILE" ]]; then
+  if [[ -n "$PRECOMMIT_VALIDATION_MANIFEST" ]]; then
     VALIDATION_LOG="$STATE/cycle-$cycle-controller-validation.log"
+    VALIDATION_AUDIT="$STATE/cycle-$cycle-controller-validation.audit.json"
     log "Running controller-owned pre-commit validation for cycle $cycle"
     set +e
-    (
-      cd "$REPO"
-      if [[ -n "$PRECOMMIT_VALIDATION_FILE" ]]; then
-        timeout --signal=TERM --kill-after=30s "$PRECOMMIT_VALIDATION_TIMEOUT" \
-          bash -Eeuo pipefail "$PRECOMMIT_VALIDATION_FILE"
-      else
-        timeout --signal=TERM --kill-after=30s "$PRECOMMIT_VALIDATION_TIMEOUT" \
-          bash -lc "$PRECOMMIT_VALIDATION_CMD"
-      fi
-    ) >"$VALIDATION_LOG" 2>&1
+    timeout --signal=TERM --kill-after=30s "$PRECOMMIT_VALIDATION_TIMEOUT" \
+      python3 "$VALIDATION_RUNNER" \
+        --repo "$REPO" \
+        --manifest "$PRECOMMIT_VALIDATION_MANIFEST" \
+        --audit "$VALIDATION_AUDIT" >"$VALIDATION_LOG" 2>&1
     VALIDATION_RC=$?
     set -e
     printf "%s\n" "$VALIDATION_RC" > "$STATE/cycle-$cycle-controller-validation.rc"
@@ -1049,7 +1047,9 @@ EOF
       printf 'Command or file configured: yes\n'
       printf 'Exit status: '
       cat "$STATE/cycle-$cycle-controller-validation.rc"
-      printf '\nLast validation output lines:\n\n'
+      printf '\nStructured authorization audit:\n\n'
+      cat "$STATE/cycle-$cycle-controller-validation.audit.json"
+      printf '\n\nLast validation output lines:\n\n'
       tail -n 200 "$STATE/cycle-$cycle-controller-validation.log"
     fi
     printf '\n\n# Exact review coordinates\n\n'
@@ -1079,7 +1079,9 @@ EOF
       printf 'Command or file configured: yes\n'
       printf 'Exit status: '
       cat "$STATE/cycle-$cycle-controller-validation.rc"
-      printf '\nLast validation output lines:\n\n'
+      printf '\nStructured authorization audit:\n\n'
+      cat "$STATE/cycle-$cycle-controller-validation.audit.json"
+      printf '\n\nLast validation output lines:\n\n'
       tail -n 200 "$STATE/cycle-$cycle-controller-validation.log"
     fi
     printf '\n\n# Exact review coordinates\n\n'
