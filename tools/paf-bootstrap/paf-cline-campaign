@@ -488,6 +488,13 @@ def main() -> int:
                 "--opus-config", profiles.get("review_planner", "~/.cline-opus"),
                 "--sonnet-config", profiles.get("reviewer", "~/.cline-sonnet"),
             ]
+            summary_root = Path(task["cycle_state_dir"])
+            summary_pattern = "review-resume-*-summary.json"
+            before_summaries = {
+                path.resolve(): path.stat().st_mtime_ns
+                for path in summary_root.glob(summary_pattern)
+            }
+
             result = subprocess.run(
                 command, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, check=False
             )
@@ -495,13 +502,29 @@ def main() -> int:
                 print(result.stdout, end="")
             if result.stderr:
                 print(result.stderr, end="", file=sys.stderr)
-            summaries = sorted(Path(task["cycle_state_dir"]).glob("review-resume-*-summary.json"), key=lambda p: p.stat().st_mtime)
-            if not summaries:
+
+            candidate_summaries = sorted(
+                summary_root.glob(summary_pattern),
+                key=lambda path: path.stat().st_mtime_ns,
+            )
+            new_summaries = [
+                path
+                for path in candidate_summaries
+                if (
+                    path.resolve() not in before_summaries
+                    or path.stat().st_mtime_ns > before_summaries[path.resolve()]
+                )
+            ]
+
+            if not new_summaries:
                 task["status"] = "failed"
-                task["last_reason"] = result.stderr.strip() or "review resume produced no summary"
+                task["last_reason"] = (
+                    result.stderr.strip()
+                    or f"review resume exited {result.returncode} without producing a new summary"
+                )
                 summary_path = None
             else:
-                summary_path = summaries[-1]
+                summary_path = new_summaries[-1]
                 summary = load_json(summary_path)
                 task["head_sha"] = summary.get("head_sha") or task.get("head_sha")
                 task["last_reason"] = summary.get("reason")

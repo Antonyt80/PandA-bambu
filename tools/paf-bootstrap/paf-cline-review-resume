@@ -178,17 +178,30 @@ def latest_cycle(state: Path) -> tuple[int, str]:
 
 
 def existing_review_plan(state: Path, cycle: int) -> Path | None:
-    """Find the original or newest successful resumed Opus plan."""
+    """Find the newest successful Opus plan, falling back to the original."""
+    resumed = sorted(
+        state.glob("review-resume-*-opus.txt"),
+        key=lambda path: path.stat().st_mtime_ns,
+        reverse=True,
+    )
     original = state / f"cycle-{cycle}-opus.txt"
-    candidates = [original, *sorted(state.glob("review-resume-*-opus.txt"), key=lambda path: path.stat().st_mtime, reverse=True)]
+    candidates = [*resumed, original]
+
     for candidate in candidates:
         if not candidate.is_file():
             continue
         try:
-            if parse_status(candidate.read_text(encoding="utf-8"), "REVIEW_PLAN_STATUS", {"READY", "BLOCKED"}) == "READY":
-                return candidate
+            status = parse_status(
+                candidate.read_text(encoding="utf-8"),
+                "REVIEW_PLAN_STATUS",
+                {"READY", "BLOCKED"},
+            )
         except SystemExit:
             continue
+
+        if status == "READY":
+            return candidate
+
     return None
 
 
