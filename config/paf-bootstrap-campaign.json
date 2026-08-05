@@ -1,4 +1,5 @@
 {
+  "architecture_revision": "PAF-v11",
   "backlog": [
     {
       "depends_on": [],
@@ -9,9 +10,9 @@
       ],
       "id": "BS-000",
       "milestone": "R0",
-      "objective": "Establish the approved requirements closure, Runtime Specification, security/data-governance plan, observability plan, operational invariants, cutover map, interface index, schemas, templates, monitoring, preflight, review-resume, and smoke tests.",
+      "objective": "Preserve the merged stage-0 bootstrap baseline.",
       "status_hint": "complete-after-merge",
-      "title": "Merge revision-3 PAF plans and hardened bootstrap"
+      "title": "Merge hardened PAF bootstrap baseline"
     },
     {
       "depends_on": [
@@ -19,282 +20,268 @@
       ],
       "expected_paths": [
         "paf/identity/**",
-        "tests/**",
+        "tests/paf/identity/**",
         "documentation/evolvehls/**"
       ],
       "id": "BS-010",
       "milestone": "R1",
-      "objective": "Implement logical IDs, immutable revision IDs, typed digests, canonical encoding, negotiation, migration envelope, extensions, and cross-language conformance vectors.",
-      "status_hint": "planned",
+      "objective": "Preserve the completed identity, canonical form, typed digest, negotiation, migration, registry, and cross-language conformance work.",
+      "status_hint": "complete-after-merge",
       "title": "Implement PAF wire identity and canonical form"
     },
     {
+      "architecture_refs": [
+        "PAF-v11:2",
+        "PAF-v11:3",
+        "PAF-v11:4",
+        "PAF-v11:13",
+        "PAF-v11:15"
+      ],
+      "decision_refs": [
+        "PAF11-DEC-002",
+        "PAF11-DEC-004",
+        "PAF11-DEC-005",
+        "PAF11-DEC-015",
+        "PAF11-DEC-016"
+      ],
       "depends_on": [
         "BS-010"
       ],
       "expected_paths": [
-        "paf/contracts/**",
-        "paf/events/**",
-        "tests/**",
+        "paf/refinement/**",
+        "paf/kernel/**",
+        "paf/control/**",
+        "tools/paf-bootstrap/**",
+        "tests/paf/**",
+        "config/**",
         "documentation/evolvehls/**"
+      ],
+      "id": "BS-012",
+      "milestone": "R1-RF",
+      "objective": "Implement the minimal PAF v11 common model envelope; Intent, Problem, Solution, System, Activity, and Work Graph payloads; RefinementRequest/Proposal/Review/Decision; repository-state projection; reviewed Work Graph proposals; deterministic traceability, dependency, active-work, and semantic-drift validation; and atomic accepted Work Graph activation.",
+      "source_model_refs": [
+        "PAF-v11"
+      ],
+      "status_hint": "planned",
+      "target_model_kind": "work-graph",
+      "title": "Implement common models and architecture-to-Work-Graph refinement"
+    },
+    {
+      "architecture_refs": [
+        "PAF-v11:5",
+        "PAF-v11:15"
+      ],
+      "decision_refs": [
+        "PAF11-DEC-006",
+        "PAF11-DEC-015"
+      ],
+      "depends_on": [
+        "BS-012"
+      ],
+      "expected_paths": [
+        "paf/kernel/**",
+        "paf/control/**",
+        "tools/paf-bootstrap/**",
+        "tests/paf/**",
+        "documentation/evolvehls/**"
+      ],
+      "id": "BS-014",
+      "milestone": "R1-OBS",
+      "objective": "Represent generation, task critique, task repair, implementation, validation, checkpoint, implementation review, publication, and completion as unambiguous active/historical phases with one stable status projection.",
+      "source_model_refs": [
+        "PAF-v11"
+      ],
+      "status_hint": "planned",
+      "target_model_kind": "system",
+      "title": "Unify bootstrap phase identity and monitoring"
+    },
+    {
+      "architecture_refs": [
+        "PAF-v11:11",
+        "PAF-v11:15"
+      ],
+      "decision_refs": [
+        "PAF11-DEC-012",
+        "PAF11-DEC-016"
+      ],
+      "depends_on": [
+        "BS-014"
+      ],
+      "expected_paths": [
+        "paf/control/**",
+        "paf/kernel/**",
+        "tools/paf-bootstrap/**",
+        "tests/paf/**",
+        "documentation/evolvehls/**"
+      ],
+      "id": "BS-016",
+      "milestone": "R1-REC",
+      "objective": "Reject unresolved authoritative prerequisites before execution and distinguish retry, continue, remediation, task revision, regeneration, partial recovery, effect reconciliation, upstream model revision, replanning, supersession, rollback, and termination.",
+      "source_model_refs": [
+        "PAF-v11"
+      ],
+      "status_hint": "planned",
+      "target_model_kind": "activity",
+      "title": "Implement prerequisite checks and explicit recovery operations"
+    },
+    {
+      "architecture_refs": [
+        "PAF-v11:11"
+      ],
+      "decision_refs": [
+        "PAF11-DEC-012"
+      ],
+      "depends_on": [
+        "BS-016"
+      ],
+      "expected_paths": [
+        "paf/control/**",
+        "paf/assurance/**",
+        "tools/paf-bootstrap/**",
+        "tests/paf/**",
+        "documentation/evolvehls/**"
+      ],
+      "id": "BS-018",
+      "milestone": "R1-PART",
+      "objective": "Capture exact partial work, completed criteria, validations, assumptions, external effects, attempt lineage, and compatibility checks before reuse.",
+      "source_model_refs": [
+        "PAF-v11"
+      ],
+      "status_hint": "planned",
+      "target_model_kind": "work-graph",
+      "title": "Implement partial-work manifests and compatibility-aware recovery"
+    },
+    {
+      "architecture_refs": [
+        "PAF-v11:3",
+        "PAF-v11:4",
+        "PAF-v11:14",
+        "PAF-v11:15"
+      ],
+      "decision_refs": [
+        "PAF11-DEC-004",
+        "PAF11-DEC-005",
+        "PAF11-DEC-015"
+      ],
+      "depends_on": [
+        "BS-018"
+      ],
+      "expected_paths": [
+        "paf/refinement/**",
+        "paf/control/**",
+        "paf/kernel/**",
+        "tools/paf-bootstrap/**",
+        "tests/paf/**"
       ],
       "id": "BS-020",
       "milestone": "R2",
-      "objective": "Provide common versioned objects, errors, causal events, registry behavior, and conformance fixtures required by all later records.",
+      "objective": "Move model validation, refinement proposal lifecycle, independent critique/repair, promotion, supersession, and Work Graph selection into reusable paf modules while preserving current campaign CLI behavior.",
+      "source_model_refs": [
+        "PAF-v11"
+      ],
       "status_hint": "planned",
-      "title": "Implement the minimal contract, error, and event envelope"
+      "target_model_kind": "system",
+      "title": "Implement reusable refinement kernel behind bootstrap compatibility commands"
     },
     {
+      "architecture_refs": [
+        "PAF-v11:6",
+        "PAF-v11:7"
+      ],
+      "decision_refs": [
+        "PAF11-DEC-007",
+        "PAF11-DEC-008"
+      ],
       "depends_on": [
         "BS-020"
       ],
       "expected_paths": [
-        "paf/security/**",
-        "paf/context/**",
-        "paf/events/**",
-        "tests/**",
-        "documentation/evolvehls/**"
-      ],
-      "id": "BS-025",
-      "milestone": "R2-S",
-      "objective": "Add trust/source labels, data classification, exact-secret redaction, Context Release Decisions, event size/backpressure metadata, and security adversarial fixtures.",
-      "status_hint": "planned",
-      "title": "Implement classification, redaction, and Context Release contracts"
-    },
-    {
-      "depends_on": [
-        "BS-025"
-      ],
-      "expected_paths": [
-        "paf/runtime/**",
-        "paf/evidence/**",
-        "paf/events/**",
+        "paf/control/**",
+        "paf/adapters/**",
+        "paf/kernel/**",
         "tools/paf-bootstrap/**",
-        "tests/**",
-        "documentation/evolvehls/**"
+        "tests/paf/**"
       ],
-      "id": "BS-030",
-      "milestone": "R3",
-      "objective": "Emit normalized attempt, stage, process, tool, validation, review, security, and evidence-component records for real bootstrap stages without transferring authority.",
+      "id": "BS-022",
+      "milestone": "R2-CAP",
+      "objective": "Implement semantic CapabilityContracts, adapter conformance, route decisions, dynamic switching boundaries, local process execution, normalized errors, cancellation, partial results, and effect receipts.",
+      "source_model_refs": [
+        "PAF-v11"
+      ],
       "status_hint": "planned",
-      "title": "Instrument the Cline bootstrap as a shadow PAF runtime"
+      "target_model_kind": "system",
+      "title": "Implement capability contracts, routes, and local execution adapter"
     },
     {
+      "architecture_refs": [
+        "PAF-v11:10"
+      ],
+      "decision_refs": [
+        "PAF11-DEC-011"
+      ],
       "depends_on": [
-        "BS-030"
+        "BS-022"
       ],
       "expected_paths": [
-        "paf/monitoring/**",
-        "paf/conformance/**",
-        "tools/paf-bootstrap/**",
-        "tests/**",
+        "paf/assurance/**",
+        "paf/kernel/**",
+        "paf/control/**",
+        "tests/paf/**",
         "documentation/evolvehls/**"
       ],
-      "id": "BS-035",
-      "milestone": "R3-O",
-      "objective": "Expose read-only stage/current-operation/progress/health views and conformance scenarios for success, provider block, repeated actions, zombie children, timeout, and stage resume.",
+      "id": "BS-024",
+      "milestone": "R2-ASR",
+      "objective": "Implement AssessmentProtocol, evidence and claim records, criterion/completion assessments, evaluator firewall, promotion decisions, and audit/evidence/completion package projections.",
+      "source_model_refs": [
+        "PAF-v11"
+      ],
       "status_hint": "planned",
-      "title": "Implement bootstrap observability and runtime conformance fixtures"
+      "target_model_kind": "system",
+      "title": "Implement evidence, assessment, and evaluator-integrity contracts"
     },
     {
+      "architecture_refs": [
+        "PAF-v11:8",
+        "PAF-v11:15"
+      ],
+      "decision_refs": [
+        "PAF11-DEC-009",
+        "PAF11-DEC-015",
+        "PAF11-DEC-016"
+      ],
       "depends_on": [
-        "BS-035"
-      ],
-      "expected_paths": [
-        "paf/state/**",
-        "paf/recovery/**",
-        "paf/evidence/**",
-        "tests/**",
-        "documentation/evolvehls/**"
-      ],
-      "id": "BS-040",
-      "milestone": "R4",
-      "objective": "Add journal, blob store, leases, checkpoints, idempotent commands, effect receipts, snapshots, replay, backup/restore, reconciliation, and failure injection.",
-      "status_hint": "planned",
-      "title": "Implement durable campaign state, checkpoints, backup, and recovery"
-    },
-    {
-      "depends_on": [
-        "BS-040"
-      ],
-      "expected_paths": [
-        "paf/monitoring/**",
-        "paf/operations/**",
-        "paf/cli/**",
-        "tests/**",
-        "documentation/evolvehls/**"
-      ],
-      "id": "BS-045",
-      "milestone": "R4-O",
-      "objective": "Make campaign, stage, current operation, progress, stalls, budgets, resources, alerts, logs, and evidence reconstructible through a stable read-only API.",
-      "status_hint": "planned",
-      "title": "Implement durable monitoring projections and alert records"
-    },
-    {
-      "depends_on": [
-        "BS-045"
-      ],
-      "expected_paths": [
-        "paf/runtime/**",
-        "paf/security/**",
-        "paf/resources/**",
-        "tests/**",
-        "documentation/evolvehls/**"
-      ],
-      "id": "BS-050",
-      "milestone": "R5",
-      "objective": "Implement the Runtime Specification, process/tool supervision, scoped environment, permissions, isolation, cancellation, policy budgets, cleanup evidence, and recovery.",
-      "status_hint": "planned",
-      "title": "Implement the generic runtime supervisor and secure sandbox"
-    },
-    {
-      "depends_on": [
-        "BS-050"
+        "BS-024"
       ],
       "expected_paths": [
         "paf/adapters/cline/**",
-        "paf/runtime/**",
+        "paf/control/**",
         "tools/paf-bootstrap/**",
-        "tests/**",
+        "tests/paf/**",
         "documentation/evolvehls/**"
       ],
-      "id": "BS-051",
-      "milestone": "R5",
-      "objective": "Move native Cline invocation, modes, profiles, event normalization, daemon/credential checks, health, results, and stage resume behind the generic runtime interface.",
+      "id": "BS-026",
+      "milestone": "R2-CLINE",
+      "objective": "Move Cline profiles, invocation, events, review resume, workspace identity, health, result normalization, and publication integration behind PAF capability and execution interfaces while retaining existing CLI and recovery compatibility.",
+      "source_model_refs": [
+        "PAF-v11"
+      ],
       "status_hint": "planned",
-      "title": "Implement Cline as the first conforming runtime adapter"
-    },
-    {
-      "depends_on": [
-        "BS-051"
-      ],
-      "expected_paths": [
-        "paf/models/**",
-        "paf/routing/**",
-        "paf/resources/**",
-        "paf/scheduling/**",
-        "tests/**",
-        "documentation/evolvehls/**"
-      ],
-      "id": "BS-060",
-      "milestone": "R6",
-      "objective": "Support one remote and one offline local Cline route with deployment identity, capability probes, resource reservations, health, queueing, and deterministic selection.",
-      "status_hint": "planned",
-      "title": "Implement routes, capabilities, resources, scheduler, and local deployment"
-    },
-    {
-      "depends_on": [
-        "BS-060"
-      ],
-      "expected_paths": [
-        "paf/completion/**",
-        "paf/retry/**",
-        "paf/decisions/**",
-        "paf/routing/**",
-        "tests/**",
-        "documentation/evolvehls/**"
-      ],
-      "id": "BS-070",
-      "milestone": "R7",
-      "objective": "Evaluate criteria independently, classify failures/progress/stalls, enforce provider/budget circuit breakers, and make bounded evidence-backed retry and route-transition decisions.",
-      "status_hint": "planned",
-      "title": "Implement completion, circuit breakers, retry, and switching"
-    },
-    {
-      "depends_on": [
-        "BS-070"
-      ],
-      "expected_paths": [
-        "paf/tools/**",
-        "paf/retrieval/**",
-        "paf/mcp/**",
-        "paf/security/**",
-        "tests/**",
-        "documentation/evolvehls/**"
-      ],
-      "id": "BS-080",
-      "milestone": "R8",
-      "objective": "Add retrieval/MCP/tool grants, trust, receipts, provenance, Context Release Decisions, monitoring, prompt-injection defenses, and a sandboxed local read-only server.",
-      "status_hint": "planned",
-      "title": "Implement governed retrieval and one read-only MCP server"
-    },
-    {
-      "depends_on": [
-        "BS-080"
-      ],
-      "expected_paths": [
-        "paf/work/**",
-        "paf/planning/**",
-        "paf/policy/**",
-        "tests/**",
-        "examples/**",
-        "documentation/evolvehls/**"
-      ],
-      "id": "BS-090",
-      "milestone": "R9",
-      "objective": "Add objectives, plans, steps, triggers, proposals, critics, policy, atomic mutations, scheduling, and exactly two generated child tasks.",
-      "status_hint": "planned",
-      "title": "Implement Work Graph and bounded hierarchical planning"
-    },
-    {
-      "depends_on": [
-        "BS-090"
-      ],
-      "expected_paths": [
-        "paf/adapters/claude_code/**",
-        "paf/runtime/**",
-        "tests/**",
-        "examples/**",
-        "documentation/evolvehls/**"
-      ],
-      "id": "BS-100",
-      "milestone": "R10",
-      "objective": "Run portable tasks through Cline and Claude Code with common permissions, context, monitoring, evidence, completion, recovery, and stage resume.",
-      "status_hint": "planned",
-      "title": "Implement Claude Code as a second runtime adapter"
-    },
-    {
-      "depends_on": [
-        "BS-100"
-      ],
-      "expected_paths": [
-        "paf/**",
-        "tools/paf-bootstrap/**",
-        "tests/**",
-        "examples/**",
-        "documentation/evolvehls/**"
-      ],
-      "id": "BS-110",
-      "milestone": "R11",
-      "objective": "Exercise local/remote switching, retrieval, generated tasks, redaction, monitoring, stall detection, interruption/stage recovery, and independent review while publication remains human-controlled.",
-      "status_hint": "planned",
-      "title": "Run the first monitored hierarchical self-hosted campaign"
-    },
-    {
-      "depends_on": [
-        "BS-110"
-      ],
-      "expected_paths": [
-        "paf/**",
-        "tools/paf-bootstrap/**",
-        "tests/**",
-        "documentation/evolvehls/**"
-      ],
-      "id": "BS-120",
-      "milestone": "R12",
-      "objective": "Remove duplicate authoritative orchestration, retain known-good inspect/recover/review-resume/repair tooling, add release rollback, and prepare standalone extraction.",
-      "status_hint": "planned",
-      "title": "Cut over normal control and reduce bootstrap to recovery tooling"
+      "target_model_kind": "system",
+      "title": "Convert the Cline bootstrap into a conforming PAF execution backend"
     }
   ],
   "base_branch": "dev/panda",
   "campaign_id": "paf-bootstrap-self-hosting",
+  "decision_set": "config/paf-v11/paf-decisions-v11.json",
   "documents": {
     "architecture_soundness": "documentation/evolvehls/paf-architecture-soundness-analysis.md",
     "bootstrap_operational_invariants": "documentation/evolvehls/paf-bootstrap-operational-invariants.md",
     "bootstrap_plan": "documentation/evolvehls/paf-bootstrap-self-hosting-plan.md",
     "interface_map": "documentation/evolvehls/paf-interface-state-machine-map.md",
     "observability_operations": "documentation/evolvehls/paf-observability-operations-plan.md",
+    "paf_v11_architecture": "documentation/evolvehls/paf-v11/paf-final-architecture-v11.md",
+    "paf_v11_backlog": "config/paf-v11/paf-bootstrap-backlog-v11.json",
+    "paf_v11_decisions": "config/paf-v11/paf-decisions-v11.json",
     "product_roadmap": "documentation/evolvehls/paf-product-roadmap.md",
     "requirements_traceability": "documentation/evolvehls/paf-requirements-traceability.md",
     "revision_3_critical_review": "documentation/evolvehls/paf-revision-3-critical-review.md",
@@ -320,6 +307,12 @@
     "require_repository_inspection": true,
     "scope_expansion_is_forbidden": true
   },
+  "migration": {
+    "generated_at": "2026-08-05T03:38:08.414465+00:00",
+    "kind": "paf-v11-bootstrap-bridge",
+    "preserved_state_path": "/home/vscode/.local/state/paf-bootstrap/paf-bootstrap-self-hosting/campaign-state.json",
+    "previous_campaign_sha256": "56df5a34d7628f4b56a3f581eb145a6a901b23b5c7c27952bf940157225b5331"
+  },
   "profiles": {
     "implementer": "~/.cline-terra",
     "planner": "~/.cline-sol",
@@ -344,5 +337,5 @@
   },
   "schema_version": 2,
   "title": "PAF bootstrap to governed self-hosting",
-  "version": 3
+  "version": 11
 }

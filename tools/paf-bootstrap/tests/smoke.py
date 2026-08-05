@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline smoke tests for the revision-3 PAF bootstrap bundle."""
+"""Offline smoke tests for the active PAF bootstrap campaign."""
 from __future__ import annotations
 
 import argparse
@@ -30,10 +30,14 @@ class BundleSmoke(unittest.TestCase):
             "documentation/evolvehls/paf-responsibility-transfer-matrix.md",
             "documentation/evolvehls/paf-interface-state-machine-map.md",
             "documentation/evolvehls/paf-revision-3-critical-review.md",
+            "documentation/evolvehls/paf-v11/paf-final-architecture-v11.md",
+            "config/paf-v11/paf-decisions-v11.json",
+            "config/paf-v11/paf-bootstrap-backlog-v11.json",
             "config/paf-bootstrap-campaign.json",
             "config/schemas/paf-bootstrap-campaign.schema.json",
             "config/schemas/paf-bootstrap-task.schema.json",
             "tools/paf-bootstrap/templates/next-task-prompt.md",
+            "tools/paf-bootstrap/templates/v11-next-task-addendum.md",
             "tools/paf-bootstrap/paf-cline-cycle",
             "tools/paf-bootstrap/paf-cline-next-task",
             "tools/paf-bootstrap/paf-cline-campaign",
@@ -49,12 +53,24 @@ class BundleSmoke(unittest.TestCase):
     def test_config_and_backlog(self) -> None:
         config = json.loads((self.root / "config/paf-bootstrap-campaign.json").read_text())
         self.assertEqual(2, config["schema_version"])
-        self.assertEqual(3, config["version"])
+        self.assertEqual(11, config["version"])
+        self.assertEqual("PAF-v11", config["architecture_revision"])
+
         ids = [item["id"] for item in config["backlog"]]
+        expected_ids = [
+            "BS-000",
+            "BS-010",
+            "BS-012",
+            "BS-014",
+            "BS-016",
+            "BS-018",
+            "BS-020",
+            "BS-022",
+            "BS-024",
+            "BS-026",
+        ]
+        self.assertEqual(expected_ids, ids)
         self.assertEqual(len(ids), len(set(ids)))
-        self.assertEqual("BS-000", ids[0])
-        self.assertIn("BS-025", ids)
-        self.assertIn("BS-035", ids)
         known = set(ids)
         for item in config["backlog"]:
             self.assertTrue(set(item["depends_on"]).issubset(known))
