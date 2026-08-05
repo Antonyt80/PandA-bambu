@@ -1,0 +1,273 @@
+{
+  "schema_version": 1,
+  "backlog": [
+    {
+      "id": "BS-000",
+      "milestone": "R0",
+      "title": "Merge hardened PAF bootstrap baseline",
+      "objective": "Preserve the merged stage-0 bootstrap baseline.",
+      "depends_on": [],
+      "expected_paths": [
+        "documentation/evolvehls/**",
+        "config/**",
+        "tools/paf-bootstrap/**"
+      ],
+      "status_hint": "complete-after-merge"
+    },
+    {
+      "id": "BS-010",
+      "milestone": "R1",
+      "title": "Implement PAF wire identity and canonical form",
+      "objective": "Preserve the completed identity, canonical form, typed digest, negotiation, migration, registry, and cross-language conformance work.",
+      "depends_on": [
+        "BS-000"
+      ],
+      "expected_paths": [
+        "paf/identity/**",
+        "tests/paf/identity/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "complete-after-merge"
+    },
+    {
+      "id": "BS-012",
+      "milestone": "R1-RF",
+      "title": "Implement common models and architecture-to-Work-Graph refinement",
+      "objective": "Implement the minimal PAF v11 common model envelope; Intent, Problem, Solution, System, Activity, and Work Graph payloads; RefinementRequest/Proposal/Review/Decision; repository-state projection; reviewed Work Graph proposals; deterministic traceability, dependency, active-work, and semantic-drift validation; and atomic accepted Work Graph activation.",
+      "depends_on": [
+        "BS-010"
+      ],
+      "architecture_refs": [
+        "PAF-v11:2",
+        "PAF-v11:3",
+        "PAF-v11:4",
+        "PAF-v11:13",
+        "PAF-v11:15"
+      ],
+      "decision_refs": [
+        "PAF11-DEC-002",
+        "PAF11-DEC-004",
+        "PAF11-DEC-005",
+        "PAF11-DEC-015",
+        "PAF11-DEC-016"
+      ],
+      "source_model_refs": [
+        "PAF-v11"
+      ],
+      "target_model_kind": "work-graph",
+      "expected_paths": [
+        "paf/refinement/**",
+        "paf/kernel/**",
+        "paf/control/**",
+        "tools/paf-bootstrap/**",
+        "tests/paf/**",
+        "config/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-014",
+      "milestone": "R1-OBS",
+      "title": "Unify bootstrap phase identity and monitoring",
+      "objective": "Represent generation, task critique, task repair, implementation, validation, checkpoint, implementation review, publication, and completion as unambiguous active/historical phases with one stable status projection.",
+      "depends_on": [
+        "BS-012"
+      ],
+      "architecture_refs": [
+        "PAF-v11:5",
+        "PAF-v11:15"
+      ],
+      "decision_refs": [
+        "PAF11-DEC-006",
+        "PAF11-DEC-015"
+      ],
+      "source_model_refs": [
+        "PAF-v11"
+      ],
+      "target_model_kind": "system",
+      "expected_paths": [
+        "paf/kernel/**",
+        "paf/control/**",
+        "tools/paf-bootstrap/**",
+        "tests/paf/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-016",
+      "milestone": "R1-REC",
+      "title": "Implement prerequisite checks and explicit recovery operations",
+      "objective": "Reject unresolved authoritative prerequisites before execution and distinguish retry, continue, remediation, task revision, regeneration, partial recovery, effect reconciliation, upstream model revision, replanning, supersession, rollback, and termination.",
+      "depends_on": [
+        "BS-014"
+      ],
+      "architecture_refs": [
+        "PAF-v11:11",
+        "PAF-v11:15"
+      ],
+      "decision_refs": [
+        "PAF11-DEC-012",
+        "PAF11-DEC-016"
+      ],
+      "source_model_refs": [
+        "PAF-v11"
+      ],
+      "target_model_kind": "activity",
+      "expected_paths": [
+        "paf/control/**",
+        "paf/kernel/**",
+        "tools/paf-bootstrap/**",
+        "tests/paf/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-018",
+      "milestone": "R1-PART",
+      "title": "Implement partial-work manifests and compatibility-aware recovery",
+      "objective": "Capture exact partial work, completed criteria, validations, assumptions, external effects, attempt lineage, and compatibility checks before reuse.",
+      "depends_on": [
+        "BS-016"
+      ],
+      "architecture_refs": [
+        "PAF-v11:11"
+      ],
+      "decision_refs": [
+        "PAF11-DEC-012"
+      ],
+      "source_model_refs": [
+        "PAF-v11"
+      ],
+      "target_model_kind": "work-graph",
+      "expected_paths": [
+        "paf/control/**",
+        "paf/assurance/**",
+        "tools/paf-bootstrap/**",
+        "tests/paf/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-020",
+      "milestone": "R2",
+      "title": "Implement reusable refinement kernel behind bootstrap compatibility commands",
+      "objective": "Move model validation, refinement proposal lifecycle, independent critique/repair, promotion, supersession, and Work Graph selection into reusable paf modules while preserving current campaign CLI behavior.",
+      "depends_on": [
+        "BS-018"
+      ],
+      "architecture_refs": [
+        "PAF-v11:3",
+        "PAF-v11:4",
+        "PAF-v11:14",
+        "PAF-v11:15"
+      ],
+      "decision_refs": [
+        "PAF11-DEC-004",
+        "PAF11-DEC-005",
+        "PAF11-DEC-015"
+      ],
+      "source_model_refs": [
+        "PAF-v11"
+      ],
+      "target_model_kind": "system",
+      "expected_paths": [
+        "paf/refinement/**",
+        "paf/control/**",
+        "paf/kernel/**",
+        "tools/paf-bootstrap/**",
+        "tests/paf/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-022",
+      "milestone": "R2-CAP",
+      "title": "Implement capability contracts, routes, and local execution adapter",
+      "objective": "Implement semantic CapabilityContracts, adapter conformance, route decisions, dynamic switching boundaries, local process execution, normalized errors, cancellation, partial results, and effect receipts.",
+      "depends_on": [
+        "BS-020"
+      ],
+      "architecture_refs": [
+        "PAF-v11:6",
+        "PAF-v11:7"
+      ],
+      "decision_refs": [
+        "PAF11-DEC-007",
+        "PAF11-DEC-008"
+      ],
+      "source_model_refs": [
+        "PAF-v11"
+      ],
+      "target_model_kind": "system",
+      "expected_paths": [
+        "paf/control/**",
+        "paf/adapters/**",
+        "paf/kernel/**",
+        "tools/paf-bootstrap/**",
+        "tests/paf/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-024",
+      "milestone": "R2-ASR",
+      "title": "Implement evidence, assessment, and evaluator-integrity contracts",
+      "objective": "Implement AssessmentProtocol, evidence and claim records, criterion/completion assessments, evaluator firewall, promotion decisions, and audit/evidence/completion package projections.",
+      "depends_on": [
+        "BS-022"
+      ],
+      "architecture_refs": [
+        "PAF-v11:10"
+      ],
+      "decision_refs": [
+        "PAF11-DEC-011"
+      ],
+      "source_model_refs": [
+        "PAF-v11"
+      ],
+      "target_model_kind": "system",
+      "expected_paths": [
+        "paf/assurance/**",
+        "paf/kernel/**",
+        "paf/control/**",
+        "tests/paf/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    },
+    {
+      "id": "BS-026",
+      "milestone": "R2-CLINE",
+      "title": "Convert the Cline bootstrap into a conforming PAF execution backend",
+      "objective": "Move Cline profiles, invocation, events, review resume, workspace identity, health, result normalization, and publication integration behind PAF capability and execution interfaces while retaining existing CLI and recovery compatibility.",
+      "depends_on": [
+        "BS-024"
+      ],
+      "architecture_refs": [
+        "PAF-v11:8",
+        "PAF-v11:15"
+      ],
+      "decision_refs": [
+        "PAF11-DEC-009",
+        "PAF11-DEC-015",
+        "PAF11-DEC-016"
+      ],
+      "source_model_refs": [
+        "PAF-v11"
+      ],
+      "target_model_kind": "system",
+      "expected_paths": [
+        "paf/adapters/cline/**",
+        "paf/control/**",
+        "tools/paf-bootstrap/**",
+        "tests/paf/**",
+        "documentation/evolvehls/**"
+      ],
+      "status_hint": "planned"
+    }
+  ]
+}

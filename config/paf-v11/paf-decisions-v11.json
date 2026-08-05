@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "architecture_id": "PAF-v11",
+  "status": "proposed-authoritative-baseline",
+  "supersedes": [
+    "PAF-v10",
+    "PAF-v9"
+  ],
+  "decisions": [
+    {
+      "id": "PAF11-DEC-001",
+      "decision": "PAF is a progressive-refinement and assurance framework, not an agent runtime."
+    },
+    {
+      "id": "PAF11-DEC-002",
+      "decision": "The generic layers are Intent, Problem Model, Solution Model, System Model, Activity Model, and Work Graph."
+    },
+    {
+      "id": "PAF11-DEC-003",
+      "decision": "Architecture is a human/domain alias for System Model."
+    },
+    {
+      "id": "PAF11-DEC-004",
+      "decision": "All model transitions use one propose-validate-critique-repair-assess-promote protocol."
+    },
+    {
+      "id": "PAF11-DEC-005",
+      "decision": "Use one typed envelope with model-specific payloads."
+    },
+    {
+      "id": "PAF11-DEC-006",
+      "decision": "Semantic state is an append-only accepted-event ledger plus immutable artifacts."
+    },
+    {
+      "id": "PAF11-DEC-007",
+      "decision": "Work requests CapabilityContracts; adapters may use Python, C++, CLI, MCP, local or remote execution."
+    },
+    {
+      "id": "PAF11-DEC-008",
+      "decision": "Dynamic routing may change execution route but not semantic objective, permissions, evaluator, or promotion policy."
+    },
+    {
+      "id": "PAF11-DEC-009",
+      "decision": "Reuse external agent, workflow, and search frameworks rather than rebuilding them."
+    },
+    {
+      "id": "PAF11-DEC-010",
+      "decision": "RAG produces immutable ContextPackages and is never authoritative memory."
+    },
+    {
+      "id": "PAF11-DEC-011",
+      "decision": "AssessmentProtocol and evaluator integrity are mandatory for engineering, optimization, and research claims."
+    },
+    {
+      "id": "PAF11-DEC-012",
+      "decision": "Failures are repaired at the model layer where the defect exists."
+    },
+    {
+      "id": "PAF11-DEC-013",
+      "decision": "EvolveHLS evolves tool capabilities; FIZZ refines designs using exposed capabilities."
+    },
+    {
+      "id": "PAF11-DEC-014",
+      "decision": "Capability gaps may create independent tool-evolution intents."
+    },
+    {
+      "id": "PAF11-DEC-015",
+      "decision": "The current Cline bootstrap is stage-0 and migrates incrementally behind PAF contracts."
+    },
+    {
+      "id": "PAF11-DEC-016",
+      "decision": "Controller-owned identity, exact-base binding, authorization, validation, and human merge gates remain mandatory during self-hosting."
+    }
+  ]
+}
