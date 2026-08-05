@@ -466,15 +466,54 @@ def main() -> int:
         if args.command == "resume-review":
             if not task or task.get("status") not in {"review_interrupted", "failed", "blocked"} or not task.get("cycle_state_dir"):
                 raise SystemExit("No resumable exact-head review")
-            command = [str(review_resume), "--state-dir", task["cycle_state_dir"], "--repo", str(repo), "--from", args.from_stage]
-            result = subprocess.run(command, text=True, stdout=subprocess.PIPE, check=False)
-            if result.stdout: print(result.stdout, end="")
+            runtime = config["runtime_defaults"]
+            profiles = config.get("profiles", {})
+            env = os.environ.copy()
+            if env.get("LITELLM_API_KEY") and not env.get("OPENAI_API_KEY"):
+                env["OPENAI_API_KEY"] = env["LITELLM_API_KEY"]
+            pre = [str(preflight), "--repo", str(repo)]
+            if runtime.get("publish", True):
+                pre.append("--publish")
+            if runtime.get("restart_cline_daemon_on_key_mismatch", True):
+                pre.append("--restart-daemon-on-key-mismatch")
+            if subprocess.run(pre, env=env, check=False).returncode:
+                raise SystemExit("Bootstrap preflight failed")
+            command = [
+                str(review_resume), "--state-dir", task["cycle_state_dir"], "--repo", str(repo),
+                "--from", args.from_stage, "--phase-timeout", str(runtime["phase_timeout_seconds"]),
+                "--inactivity-timeout", str(runtime["inactivity_timeout_seconds"]),
+                "--max-tool-calls", str(runtime["review_max_tool_calls"]),
+                "--max-iterations", str(runtime["review_max_iterations"]),
+                "--duplicate-command-limit", str(runtime["review_duplicate_command_limit"]),
+                "--opus-config", profiles.get("review_planner", "~/.cline-opus"),
+                "--sonnet-config", profiles.get("reviewer", "~/.cline-sonnet"),
+            ]
+            result = subprocess.run(
+                command, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, check=False
+            )
+            if result.stdout:
+                print(result.stdout, end="")
+            if result.stderr:
+                print(result.stderr, end="", file=sys.stderr)
             summaries = sorted(Path(task["cycle_state_dir"]).glob("review-resume-*-summary.json"), key=lambda p: p.stat().st_mtime)
-            if not summaries: task["status"] = "failed"; task["last_reason"] = "review resume produced no summary"
+            if not summaries:
+                task["status"] = "failed"
+                task["last_reason"] = result.stderr.strip() or "review resume produced no summary"
+                summary_path = None
             else:
-                summary = load_json(summaries[-1]); task["head_sha"] = summary.get("head_sha") or task.get("head_sha"); task["last_reason"] = summary.get("reason")
+                summary_path = summaries[-1]
+                summary = load_json(summary_path)
+                task["head_sha"] = summary.get("head_sha") or task.get("head_sha")
+                task["last_reason"] = summary.get("reason")
                 task["status"] = summary.get("status", "failed")
-            save_json(state_path, state); return result.returncode
+            save_json(state_path, state)
+            print(
+                f"Task {task['task_id']} review resume ended with {task['status']}: "
+                f"{task.get('last_reason') or ''}"
+            )
+            if summary_path:
+                print(f"Summary: {summary_path}")
+            return result.returncode
 
         if args.command == "reconcile":
             count = reconcile(repo, config, state); save_json(state_path, state); print(f"Reconciled {count} merged task(s)"); return 0

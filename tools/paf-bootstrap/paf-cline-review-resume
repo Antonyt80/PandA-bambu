@@ -10,6 +10,7 @@ import re
 import selectors
 import signal
 import subprocess
+import sys
 import tempfile
 import time
 from collections import Counter
@@ -131,6 +132,33 @@ def final_text(path: Path) -> str:
     return result
 
 
+def cline_failure(path: Path, stderr: Path) -> str | None:
+    """Return the most specific durable Cline failure recorded for an attempt."""
+    messages: list[str] = []
+    if path.is_file():
+        for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            try:
+                obj = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            if obj.get("type") == "run_result" and obj.get("finishReason") == "error":
+                text = obj.get("text")
+                if isinstance(text, str) and text.strip():
+                    messages.append(text.strip())
+            event = obj.get("event")
+            if isinstance(event, dict) and event.get("type") == "error":
+                error = event.get("error")
+                if isinstance(error, dict) and isinstance(error.get("message"), str):
+                    messages.append(error["message"].strip())
+    if messages:
+        return messages[-1]
+    if stderr.is_file():
+        lines = [line.strip() for line in stderr.read_text(encoding="utf-8", errors="replace").splitlines() if line.strip()]
+        if lines:
+            return lines[-1]
+    return None
+
+
 def parse_status(text: str, key: str, allowed: set[str]) -> str:
     matches = re.findall(rf"(?m)^{re.escape(key)}=({'|'.join(map(re.escape, sorted(allowed)))})$", text)
     if len(matches) != 1:
@@ -147,6 +175,21 @@ def latest_cycle(state: Path) -> tuple[int, str]:
         raise SystemExit("No exact checkpoint head exists in the supplied state directory")
     cycle, path = max(candidates)
     return cycle, path.read_text().strip()
+
+
+def existing_review_plan(state: Path, cycle: int) -> Path | None:
+    """Find the original or newest successful resumed Opus plan."""
+    original = state / f"cycle-{cycle}-opus.txt"
+    candidates = [original, *sorted(state.glob("review-resume-*-opus.txt"), key=lambda path: path.stat().st_mtime, reverse=True)]
+    for candidate in candidates:
+        if not candidate.is_file():
+            continue
+        try:
+            if parse_status(candidate.read_text(encoding="utf-8"), "REVIEW_PLAN_STATUS", {"READY", "BLOCKED"}) == "READY":
+                return candidate
+        except SystemExit:
+            continue
+    return None
 
 
 def main() -> int:
@@ -188,28 +231,38 @@ def main() -> int:
         env.pop("GH_TOKEN", None); env.pop("GITHUB_TOKEN", None); env.pop("SSH_AUTH_SOCK", None)
         permissions = json.dumps({"deny": ["sudo *", "rm -rf *", "docker *", "podman *", "ssh *", "scp *", "curl *", "wget *", "git add *", "git commit *", "git push *", "git checkout *", "git switch *", "git worktree *", "git reset *", "git clean *", "gh *"], "allowRedirects": True}, separators=(",", ":"))
         env["CLINE_COMMAND_PERMISSIONS"] = permissions
-        opus_text = state / f"cycle-{cycle}-opus.txt"
+        opus_text = existing_review_plan(state, cycle)
         if args.from_stage == "opus":
             prompt = "Act as the independent verification planner. Produce a criterion-linked bounded plan with no more than 12 actions, one command per tool call, no duplicates, and no edits. Final line: REVIEW_PLAN_STATUS=READY or REVIEW_PLAN_STATUS=BLOCKED.\n\n" + common
             out, err = state / f"review-resume-{resume_id}-opus.jsonl", state / f"review-resume-{resume_id}-opus.stderr.log"
             command = ["cline", "--json", "--auto-approve", "true", "--plan", "--timeout", str(args.phase_timeout), "--thinking", "xhigh", "--config", str(Path(args.opus_config).expanduser()), "--cwd", str(worktree), prompt]
             rc, violation = run_cline(command, env, out, err, args.phase_timeout, args.inactivity_timeout, 12, 24, args.duplicate_command_limit)
             if rc:
-                save_json(summary_path, {"schema_version": 1, "status": "failed", "role": "opus", "reason": violation or f"exit {rc}", "head_sha": head, "state_dir": str(state)})
+                reason = violation or cline_failure(out, err) or f"exit {rc}"
+                save_json(summary_path, {"schema_version": 1, "status": "failed", "role": "opus", "reason": reason, "head_sha": head, "state_dir": str(state)})
+                print(f"Review resume failed at Opus: {reason}\nSummary: {summary_path}", file=sys.stderr)
                 return 1
             text = final_text(out); status = parse_status(text, "REVIEW_PLAN_STATUS", {"READY", "BLOCKED"})
             opus_text = state / f"review-resume-{resume_id}-opus.txt"; opus_text.write_text(text + "\n")
             if status == "BLOCKED":
-                save_json(summary_path, {"schema_version": 1, "status": "blocked", "role": "opus", "reason": "review planning blocked", "head_sha": head, "state_dir": str(state)})
+                reason = "review planning blocked"
+                save_json(summary_path, {"schema_version": 1, "status": "blocked", "role": "opus", "reason": reason, "head_sha": head, "state_dir": str(state)})
+                print(f"Review resume blocked at Opus: {reason}\nSummary: {summary_path}", file=sys.stderr)
                 return 2
-        if not opus_text.is_file(): raise SystemExit(f"Missing review plan: {opus_text}")
+        if opus_text is None:
+            reason = f"missing successful review plan for cycle {cycle}; resume from Opus"
+            save_json(summary_path, {"schema_version": 1, "status": "failed", "role": "opus", "reason": reason, "head_sha": head, "state_dir": str(state)})
+            print(f"Review resume failed: {reason}\nSummary: {summary_path}", file=sys.stderr)
+            return 1
         verify = common + "\n\n# Independent verification plan\n\n" + opus_text.read_text()
         prompt = "Act as the independent verification executor. Review only the exact head and supplied criterion-linked plan. One command per tool call, no duplicates, no edits, no network, and stop within the enforced budgets. Final line: PAF_REVIEW_VERDICT=APPROVED or PAF_REVIEW_VERDICT=BLOCKED.\n\n" + verify
         out, err = state / f"review-resume-{resume_id}-sonnet.jsonl", state / f"review-resume-{resume_id}-sonnet.stderr.log"
         command = ["cline", "--json", "--auto-approve", "true", "--timeout", str(args.phase_timeout), "--thinking", "high", "--config", str(Path(args.sonnet_config).expanduser()), "--cwd", str(worktree), prompt]
         rc, violation = run_cline(command, env, out, err, args.phase_timeout, args.inactivity_timeout, args.max_tool_calls, args.max_iterations, args.duplicate_command_limit)
         if rc:
-            save_json(summary_path, {"schema_version": 1, "status": "failed", "role": "sonnet", "reason": violation or f"exit {rc}", "head_sha": head, "state_dir": str(state)})
+            reason = violation or cline_failure(out, err) or f"exit {rc}"
+            save_json(summary_path, {"schema_version": 1, "status": "failed", "role": "sonnet", "reason": reason, "head_sha": head, "state_dir": str(state)})
+            print(f"Review resume failed at Sonnet: {reason}\nSummary: {summary_path}", file=sys.stderr)
             return 1
         text = final_text(out); verdict = parse_status(text, "PAF_REVIEW_VERDICT", {"APPROVED", "BLOCKED"})
         report = state / f"review-resume-{resume_id}-sonnet.txt"; report.write_text(text + "\n")
