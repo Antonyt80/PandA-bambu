@@ -30,10 +30,10 @@ def _declares(change, path, before, after, baseline, candidate):
         return False
     if change.get("semantic_key") == path and change.get("before") == before and change.get("after") == after:
         return True
-    # A complete source-linked state transition is an explicit aggregate record,
-    # not an implicit permission to ignore a difference.
-    return (change.get("semantic_key") == "$semantic-state" and
-            change.get("before") == baseline and change.get("after") == candidate)
+    # Aggregate state records are auditable context, not a blanket admission for
+    # individual differences.  Every changed semantic path needs its own exact,
+    # source-linked declaration.
+    return False
 
 def validate_refinement(request,proposal,review,decision):
     issues=[]
@@ -42,7 +42,7 @@ def validate_refinement(request,proposal,review,decision):
     if pd["request_revision"] != request.revision: issues.append(ValidationIssue("subject-mismatch"))
     if rd["required_review"]:
         if not vd or vd["proposal_revision"] != proposal.revision or vd["candidate_revision"] != pd["candidate_revision"] or vd["approved"] is not True: issues.append(ValidationIssue("review-not-approved"))
-    if not dd or dd["proposal_revision"] != proposal.revision or dd["candidate_revision"] != pd["candidate_revision"] or (vd and dd["review_revision"] != review.revision): issues.append(ValidationIssue("subject-mismatch"))
+    if not dd or dd["proposal_revision"] != proposal.revision or dd["candidate_revision"] != pd["candidate_revision"] or (vd and dd["review_revision"] != review.revision) or (not vd and dd["review_revision"] not in (None,"","none")): issues.append(ValidationIssue("subject-mismatch"))
     elif dd["outcome"] not in ("accept","accepted"): issues.append(ValidationIssue("decision-not-accepting"))
     admitted=() if not dd else tuple(dd["admitted_issue_ids"])
     for issue in pd["unresolved_issues"]:

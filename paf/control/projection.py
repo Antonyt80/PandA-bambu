@@ -14,7 +14,8 @@ class RepositoryStateProjection:
         for n in ("completed_work","active_work","history","defects","capability_gaps","adapters"):
             v=getattr(self,n)
             if type(v) is list: object.__setattr__(self,n,tuple(v))
-        canonical_bytes(self.to_dict())
+        try: canonical_bytes(self.to_dict())
+        except Exception: raise ProjectionError("malformed-record") from None
     @property
     def revision(self): return str(TypedDigest.for_value("paf:repository-projection",self.to_dict()))
     def to_dict(self): return {x:wire(getattr(self,x)) for x in self.__dataclass_fields__}

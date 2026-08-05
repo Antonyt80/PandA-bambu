@@ -2,14 +2,17 @@
 from dataclasses import dataclass
 from paf.kernel.errors import WorkGraphError, ActivationError
 from paf.identity import TypedDigest
-from paf.kernel.models import ModelEnvelope, ProposedWorkItem, ControllerIdAssignment, WorkGraphPayload
+from paf.kernel.models import ModelEnvelope, ProposedWorkItem, AcceptedWorkItem, ControllerIdAssignment, WorkGraphPayload
 from paf.refinement.validation import ValidationReport
 @dataclass(frozen=True)
 class WorkGraphState:
     accepted_graph:ModelEnvelope; accepted_history:tuple=()
     def __post_init__(self): object.__setattr__(self,"accepted_history",tuple(self.accepted_history))
 def _item_dict(item):
-    return item.to_dict() if isinstance(item, ProposedWorkItem) else item
+    if isinstance(item, ProposedWorkItem): return item.to_dict()
+    if isinstance(item, AcceptedWorkItem):
+        return {"logical_key":item.logical_key,"controller_id":str(item.controller_id),"content_revision":str(item.content_revision),"content_digest":str(item.content_digest)}
+    return item
 
 def _content(item):
     """Controller identity is assigned later and is not mutable item content."""
@@ -18,7 +21,8 @@ def _content(item):
     return {key:value for key,value in material.items() if key != "controller_id"}
 
 def _unsafe_bound(value):
-    return type(value) is not str or not value or value == "/" or "*" in value or value.startswith("/")
+    return (type(value) is not str or not value or value == "/" or "*" in value or
+            value.startswith("/") or ".." in value.split("/"))
 
 def validate_work_items(items, assignments=(), completed_items=(), active_items=()):
     issues=[]; keys=[x.logical_key for x in items]
@@ -50,7 +54,10 @@ def validate_work_items(items, assignments=(), completed_items=(), active_items=
         if key not in proposed: issues.append("completed-work-loss")
     for prior in active_items:
         prior=_item_dict(prior); key=prior.get("logical_key") if type(prior) is dict else None
-        if key not in proposed or proposed[key] != _content(prior): issues.append("active-work-mutation")
+        # AcceptedWorkItem is identity-only projection evidence.  It can prove
+        # retention but cannot supply content that this pure validator must not
+        # infer; full item snapshots are compared exactly below.
+        if key not in proposed or ("objective" in prior and proposed[key] != _content(prior)): issues.append("active-work-mutation")
     return tuple(sorted(set(issues)))
 
 def _with_dependencies(items, dependencies):
@@ -87,15 +94,40 @@ def build_work_graph_proposal(request,accepted_models,projection,proposed_items,
     from paf.refinement.protocol import RefinementProposal
     return RefinementProposal(("work-graph-proposal",request.revision,refs,candidate_revision,tuple(semantic_changes),(),validation_refs,None))
 
-def _candidate_from_refs(proposal):
+def _candidate_from_refs(proposal, current_graph=None):
     for ref in proposal.to_dict()["validation_refs"]:
         if type(ref) is dict and ref.get("kind") == "accepted-work-graph" and type(ref.get("envelope")) is dict:
             try: return ModelEnvelope.from_dict(ref["envelope"])
             except Exception: raise ActivationError("malformed-candidate") from None
+        if type(ref) is dict and ref.get("kind") == "work-graph-content" and current_graph is not None:
+            content=ref.get("content")
+            if type(content) is not dict or str(TypedDigest.for_value("paf:work-graph-proposal",content)) != proposal.to_dict()["candidate_revision"]:
+                raise ActivationError("subject-mismatch")
+            items=content.get("items")
+            if type(items) is not list:
+                raise ActivationError("malformed-candidate")
+            return ModelEnvelope.create(
+                model_id=current_graph.model_id, status="proposed",
+                payload=WorkGraphPayload(({"items":items},)),
+                creation_metadata=current_graph.creation_metadata,
+                base_metadata=current_graph.base_metadata,
+                parents=(str(current_graph.revision_id),),
+                intent_ref=current_graph.intent_ref,
+                source_refs=current_graph.source_refs,
+                decision_refs=current_graph.decision_refs,
+                policy_refs=current_graph.policy_refs,
+                capability_refs=current_graph.capability_refs,
+                assumptions=current_graph.assumptions, unknowns=current_graph.unknowns,
+                constraints=current_graph.constraints, non_goals=current_graph.non_goals,
+                risks=current_graph.risks,
+                evidence_requirements=current_graph.evidence_requirements,
+            )
     return None
 
 def _candidate_items(candidate):
     fields=candidate.payload.fields
+    if not fields:
+        return []
     if len(fields) != 1 or type(fields[0]) is not dict or type(fields[0].get("items")) is not list: raise ActivationError("malformed-candidate")
     return fields[0]["items"]
 
@@ -137,11 +169,12 @@ def activate_work_graph(current_state,expected_graph_revision,proposal,validatio
     if not isinstance(validation_report,ValidationReport) or validation_report.proposal_revision != proposal.revision or validation_report.candidate_revision != proposal.to_dict()["candidate_revision"] or not validation_report.passed: raise ActivationError("subject-mismatch")
     lifecycle=validate_refinement_placeholder(proposal,review,decision)
     if lifecycle: raise ActivationError(lifecycle)
-    candidate=_candidate_from_refs(proposal)
+    candidate=_candidate_from_refs(proposal,current_state.accepted_graph)
     if candidate is None or candidate.status not in ("proposed","accepted") or candidate.model_kind != "work-graph": raise ActivationError("missing-controller-id")
-    if str(candidate.revision_id) != proposal.to_dict()["candidate_revision"]: raise ActivationError("subject-mismatch")
+    if not any(type(ref) is dict and ref.get("kind") == "work-graph-content" for ref in proposal.to_dict()["validation_refs"]) and str(candidate.revision_id) != proposal.to_dict()["candidate_revision"]: raise ActivationError("subject-mismatch")
     items=_candidate_items(candidate)
-    candidate_issues=validate_work_items(_proposed_items(items))
+    prior_items=_candidate_items(current_state.accepted_graph)
+    candidate_issues=validate_work_items(_proposed_items(items),completed_items=prior_items,active_items=prior_items)
     if candidate_issues: raise ActivationError(candidate_issues[0])
     keys=[item.get("logical_key") for item in items if type(item) is dict]
     if len(keys) != len(items) or len(keys) != len(set(keys)): raise ActivationError("missing-controller-id")
@@ -150,6 +183,11 @@ def activate_work_graph(current_state,expected_graph_revision,proposal,validatio
         mapped={assignment.logical_key:str(assignment.controller_id) for assignment in controller_assignments}
     except Exception: raise ActivationError("missing-controller-id") from None
     if set(mapped) != set(keys) or len(set(mapped.values())) != len(mapped): raise ActivationError("missing-controller-id")
+    for prior in prior_items:
+        if type(prior) is dict and prior.get("controller_id") is not None:
+            key=prior.get("logical_key")
+            if key in mapped and mapped[key] != prior["controller_id"]:
+                raise ActivationError("active-work-mutation")
     accepted=_assigned_candidate(candidate,items,controller_assignments)
     return WorkGraphState(accepted,current_state.accepted_history+(accepted.revision_id,))
 def validate_refinement_placeholder(proposal,review,decision):

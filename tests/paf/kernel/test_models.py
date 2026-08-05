@@ -35,3 +35,6 @@ class Models(unittest.TestCase):
    self.assertEqual(record,SemanticRecord.from_dict(record.to_dict()))
  def test_uncanonicalizable_payload_fails(self):
   with self.assertRaises(ModelError): IntentPayload((float('nan'),))
+ def test_semantic_change_normalizes_uncanonicalizable_values(self):
+  with self.assertRaises(RecordError) as error: SemanticChange('c','scope-changed','x',float('nan'),None,('s',),'why')
+  self.assertEqual('malformed-record',error.exception.code)

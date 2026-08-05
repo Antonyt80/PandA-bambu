@@ -54,7 +54,9 @@ class SemanticChange:
     def __post_init__(self):
         allowed=("narrowing","expansion","assumption-added","assumption-removed","decision-added","decision-removed","conflict-added","conflict-removed","unknown-added","unknown-removed","requirement-changed","scope-changed","path-changed","effect-changed")
         if type(self.change_id) is not str or not self.change_id or self.classification not in allowed or type(self.semantic_key) is not str or type(self.source_refs) not in (tuple,list) or type(self.rationale) is not str or type(self.admission_required) is not bool: raise RecordError("malformed-record")
-        object.__setattr__(self,"source_refs",tuple(self.source_refs)); canonical_bytes(self.to_dict())
+        object.__setattr__(self,"source_refs",tuple(self.source_refs))
+        try: canonical_bytes(self.to_dict())
+        except Exception: raise RecordError("malformed-record") from None
     def to_dict(self): return {"change_id":self.change_id,"classification":self.classification,"semantic_key":self.semantic_key,"before":wire(self.before),"after":wire(self.after),"source_refs":list(self.source_refs),"rationale":self.rationale,"admission_required":self.admission_required}
     @classmethod
     def from_dict(cls,d):

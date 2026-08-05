@@ -28,10 +28,15 @@ class Graph(unittest.TestCase):
   changed=ProposedWorkItem('a','changed',trace_links=('s',),allowed_paths=('paf/kernel',),allowed_effects=('write:workspace',))
   self.assertIn('active-work-mutation',validate_work_items((changed,),active_items=(safe,)))
  def test_path_and_effect_root_and_wildcard_bounds_fail(self):
-  for path in ('/','paf/**'):
+  for path in ('/','paf/**','../../etc','paf/../..'):
    self.assertIn('overbroad-path',validate_work_items((ProposedWorkItem('a','a',trace_links=('s',),allowed_paths=(path,)),)))
-  for effect in ('/','write:*'):
+  for effect in ('/','write:*','../../effect'):
    self.assertIn('overbroad-effect',validate_work_items((ProposedWorkItem('a','a',trace_links=('s',),allowed_effects=(effect,)),)))
+ def test_accepted_work_item_projection_is_retained_without_false_mutation(self):
+  lid=LogicalId(Namespace('paf.test'),'work','a'); revision=self._graph('item',()).revision_id
+  accepted=AcceptedWorkItem('a',lid,revision,self._graph('item',()).content_digest)
+  proposed=ProposedWorkItem('a','a',trace_links=('s',))
+  self.assertEqual((),validate_work_items((proposed,),completed_items=(accepted,),active_items=(accepted,)))
  def _models(self):
   result=[]
   for kind,cls in (('intent',IntentPayload),('problem',ProblemPayload),('solution',SolutionPayload),('system',SystemPayload),('activity',ActivityPayload)):
@@ -72,6 +77,20 @@ class Graph(unittest.TestCase):
   with self.assertRaises(ActivationError): activate_work_graph(state,str(current.revision_id),wrong,ValidationReport(wrong.revision,str(current.revision_id)),review,decision,())
   with self.assertRaises(ActivationError): activate_work_graph(state,str(current.revision_id),proposal,report,review,decision,duplicate)
   self.assertEqual(state,WorkGraphState(current,(current.revision_id,)))
+ def test_activation_preserves_prior_items_and_builder_proposals_interoperate(self):
+  prior=ProposedWorkItem('done','done',trace_links=('s',)).to_dict(); current=self._graph('old',({'items':[prior]},)); state=WorkGraphState(current,(current.revision_id,))
+  dropped=self._graph('new',({'items':[]},)); dropped_proposal=self._activation_proposal(dropped)
+  review=RefinementReview(('review',dropped_proposal.revision,dropped_proposal.to_dict()['candidate_revision'],True,(),(),'policy')); decision=RefinementDecision(('decision',dropped_proposal.revision,dropped_proposal.to_dict()['candidate_revision'],review.revision,'accept','assessment',(),(),'policy')); report=ValidationReport(dropped_proposal.revision,dropped_proposal.to_dict()['candidate_revision'])
+  with self.assertRaises(ActivationError) as error: activate_work_graph(state,str(current.revision_id),dropped_proposal,report,review,decision,())
+  self.assertIn(error.exception.code,('active-work-mutation','completed-work-loss')); self.assertIn('completed-work-loss',validate_work_items((),completed_items=(prior,))); self.assertEqual(state,WorkGraphState(current,(current.revision_id,)))
+  active=dict(prior,controller_id='lid1:paf.test:work:stable'); active_current=self._graph('active',({'items':[active]},)); active_state=WorkGraphState(active_current,(active_current.revision_id,)); same_content=self._graph('same',({'items':[prior]},)); active_proposal=self._activation_proposal(same_content)
+  active_review=RefinementReview(('active-review',active_proposal.revision,active_proposal.to_dict()['candidate_revision'],True,(),(),'policy')); active_decision=RefinementDecision(('active-decision',active_proposal.revision,active_proposal.to_dict()['candidate_revision'],active_review.revision,'accept','assessment',(),(),'policy')); active_report=ValidationReport(active_proposal.revision,active_proposal.to_dict()['candidate_revision'])
+  with self.assertRaises(ActivationError) as error: activate_work_graph(active_state,str(active_current.revision_id),active_proposal,active_report,active_review,active_decision,(ControllerIdAssignment('done',LogicalId(Namespace('paf.test'),'work','changed')),))
+  self.assertEqual('active-work-mutation',error.exception.code); self.assertEqual(active_state,WorkGraphState(active_current,(active_current.revision_id,)))
+  models=self._models(); projection=RepositoryStateProjection('p','base',tuple(str(x.revision_id) for x in models)); refs=tuple(str(x.revision_id) for x in models); request=RefinementRequest(('r',refs,'work-graph','graph',None,False,'p',(),(),projection.revision))
+  proposal=build_work_graph_proposal(request,models,projection,(ProposedWorkItem('done','done',trace_links=('s',)),))
+  review=RefinementReview(('builder-review',proposal.revision,proposal.to_dict()['candidate_revision'],True,(),(),'policy')); decision=RefinementDecision(('builder-decision',proposal.revision,proposal.to_dict()['candidate_revision'],review.revision,'accept','assessment',(),(),'policy')); report=ValidationReport(proposal.revision,proposal.to_dict()['candidate_revision']); assignment=ControllerIdAssignment('done',LogicalId(Namespace('paf.test'),'work','done'))
+  self.assertEqual('accepted',activate_work_graph(state,str(current.revision_id),proposal,report,review,decision,(assignment,)).accepted_graph.status)
  def test_proposal_rejects_incomplete_proposed_and_superseded_sources(self):
   models=self._models(); projection=RepositoryStateProjection('p','base',tuple(str(x.revision_id) for x in models)); refs=tuple(str(x.revision_id) for x in models); request=RefinementRequest(('r',refs,'work-graph','graph',None,False,'p',(),(),projection.revision)); item=ProposedWorkItem('a','a',trace_links=('s',))
   with self.assertRaises(WorkGraphError): build_work_graph_proposal(request,models[:4],projection,(item,))
