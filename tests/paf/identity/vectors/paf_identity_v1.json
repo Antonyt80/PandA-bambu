@@ -20,6 +20,21 @@
         ]
       },
       "hex": "7b2261223a5b747275652c312c22c3a9225d2c227a223a6e756c6c7d"
+    },
+    {
+      "id": "PF-IDENTITY-NULL",
+      "value": null,
+      "hex": "6e756c6c"
+    },
+    {
+      "id": "PF-IDENTITY-SAFE-BOUNDARIES",
+      "value": [-9007199254740991, 0, 9007199254740991],
+      "hex": "5b2d393030373139393235343734303939312c302c393030373139393235343734303939315d"
+    },
+    {
+      "id": "PF-IDENTITY-SCALAR-ORDER",
+      "value": {"𐀀": 1, "": 2, "a": {"z": null}},
+      "hex": "7b2261223a7b227a223a6e756c6c7d2c22ee8080223a322c22f0908080223a317d"
     }
   ],
   "digests": [
@@ -31,6 +46,19 @@
         "b": 2
       },
       "wire": "td1:paf-json-v1:example:sha256:26cc1f90e974c151b8fa54d6265370bc388c64993679e40fe5b4da19eb776c5d"
+    },
+    {
+      "id": "PF-DIGEST-REVISION-DOMAIN",
+      "domain": "revision:paf:item",
+      "value": {"a": 1, "b": 2},
+      "wire": "td1:paf-json-v1:revision:paf:item:sha256:802617e136cd0c533e4d905f82dfd5a9f92f1f2e8d0ae8256005c2dca42db8a3"
+    }
+  ],
+  "json_text": [
+    {
+      "id": "PF-IDENTITY-BINARY",
+      "input": "{\"$paf-binary\":\"AQI\"}",
+      "hex": "7b22247061662d62696e617279223a22415149227d"
     }
   ],
   "rejections": [
@@ -55,10 +83,22 @@
       "code": "reserved-binary-tag"
     },
     {
-      "id": "CT-IDENTITY-001",
+      "id": "NF-IDENTITY-004",
       "kind": "json-text",
       "input": "{\"a\":1,\"a\":2}",
       "code": "duplicate-object-key"
+    },
+    {
+      "id": "NF-IDENTITY-005",
+      "kind": "json-text",
+      "input": "{\"é\":1,\"é\":2}",
+      "code": "non-nfc-collision"
+    },
+    {
+      "id": "NF-IDENTITY-006",
+      "kind": "json-text",
+      "input": "{} trailing",
+      "code": "invalid-json-text"
     }
   ]
 }

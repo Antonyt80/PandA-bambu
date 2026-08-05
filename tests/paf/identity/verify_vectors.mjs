@@ -13,6 +13,25 @@ const REQUIRED_DECISIONS = new Set([
   "PAF-DEC-004",
   "PAF-DEC-005",
 ]);
+const REQUIRED_CANONICAL_IDS = new Set([
+  "PF-IDENTITY-001",
+  "PF-IDENTITY-NULL",
+  "PF-IDENTITY-SAFE-BOUNDARIES",
+  "PF-IDENTITY-SCALAR-ORDER",
+]);
+const REQUIRED_DIGEST_IDS = new Set([
+  "PF-DIGEST-001",
+  "PF-DIGEST-REVISION-DOMAIN",
+]);
+const REQUIRED_JSON_TEXT_IDS = new Set(["PF-IDENTITY-BINARY"]);
+const REQUIRED_REJECTION_IDS = new Set([
+  "NF-IDENTITY-001",
+  "NF-IDENTITY-002",
+  "NF-IDENTITY-003",
+  "NF-IDENTITY-004",
+  "NF-IDENTITY-005",
+  "NF-IDENTITY-006",
+]);
 const MIN_SAFE_INTEGER = -9007199254740991;
 const MAX_SAFE_INTEGER = 9007199254740991;
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -23,6 +42,12 @@ class IdentityError extends Error {
   constructor(code) {
     super(code);
     this.code = code;
+  }
+}
+
+class BinaryValue {
+  constructor(data) {
+    this.data = data;
   }
 }
 
@@ -77,6 +102,9 @@ function encode(value) {
   if (typeof value === "string") {
     return quote(value);
   }
+  if (value instanceof BinaryValue) {
+    return `{"$paf-binary":${quote(value.data.toString("base64url"))}}`;
+  }
   if (Array.isArray(value)) {
     return `[${value.map(encode).join(",")}]`;
   }
@@ -124,12 +152,26 @@ function typedDigest(domain, value) {
 }
 
 function parseJsonText(text) {
+  if (typeof text !== "string" || text.startsWith("\ufeff")) {
+    fail("invalid-json-text");
+  }
   let index = 0;
 
   function whitespace() {
-    while (/\s/u.test(text[index] ?? "")) {
+    while (text[index] === " " || text[index] === "\t" || text[index] === "\r" || text[index] === "\n") {
       index += 1;
     }
+  }
+
+  function binary(value) {
+    if (typeof value !== "string" || value.includes("=") || !/^[A-Za-z0-9_-]*$/.test(value)) {
+      fail("invalid-binary");
+    }
+    const data = Buffer.from(value, "base64url");
+    if (data.toString("base64url") !== value) {
+      fail("invalid-binary");
+    }
+    return new BinaryValue(data);
   }
 
   function string() {
@@ -188,6 +230,9 @@ function parseJsonText(text) {
         whitespace();
         if (text[index] === "}") {
           index += 1;
+          if (keys.size === 1 && keys.has("$paf-binary")) {
+            return binary(object["$paf-binary"]);
+          }
           return object;
         }
         if (text[index++] !== ",") {
@@ -272,7 +317,7 @@ function requireExactObject(vector, value, required, operation) {
 }
 
 function validateManifest(data) {
-  requireExactObject("manifest", data, ["vector_schema", "profile", "decisions", "canonical", "digests", "rejections"], "fields");
+  requireExactObject("manifest", data, ["vector_schema", "profile", "decisions", "canonical", "digests", "json_text", "rejections"], "fields");
   assertEqual("manifest", "schema", SCHEMA, data.vector_schema);
   assertEqual("manifest", "profile", PROFILE, data.profile);
   if (!Array.isArray(data.decisions)) {
@@ -280,10 +325,25 @@ function validateManifest(data) {
   }
   const decisions = new Set(data.decisions);
   assertEqual("manifest", "decisions", [...REQUIRED_DECISIONS].sort().join(","), [...decisions].sort().join(","));
-  for (const collection of ["canonical", "digests", "rejections"]) {
+  for (const collection of ["canonical", "digests", "json_text", "rejections"]) {
     if (!Array.isArray(data[collection]) || data[collection].length === 0) {
       throw new Error(`manifest: ${collection}: expected="non-empty array" actual=${JSON.stringify(data[collection])} reason=malformed`);
     }
+  }
+  const requiredIds = {
+    canonical: REQUIRED_CANONICAL_IDS,
+    digests: REQUIRED_DIGEST_IDS,
+    json_text: REQUIRED_JSON_TEXT_IDS,
+    rejections: REQUIRED_REJECTION_IDS,
+  };
+  for (const [collection, expected] of Object.entries(requiredIds)) {
+    const actual = new Set(data[collection].map((vector) => vector.id));
+    assertEqual(
+      "manifest",
+      `${collection}-ids`,
+      [...expected].sort().join(","),
+      [...actual].sort().join(","),
+    );
   }
 }
 
@@ -304,6 +364,14 @@ function validateDigests(vectors) {
     if (typedDigest(vector.domain, vector.value) === tampered) {
       throw new Error(`${vector.id}: tampered-digest: expected="rejected" actual="accepted" reason=tamper-undetected`);
     }
+  }
+}
+
+function validateJsonText(vectors) {
+  for (const vector of vectors) {
+    requireExactObject(vector.id ?? "json-text", vector, ["id", "input", "hex"], "fields");
+    const actual = Buffer.from(encode(parseJsonText(vector.input)), "utf8").toString("hex");
+    assertEqual(vector.id, "json-text-hex", vector.hex, actual);
   }
 }
 
@@ -364,6 +432,7 @@ function main() {
   validateManifest(data);
   validateCanonical(data.canonical);
   validateDigests(data.digests);
+  validateJsonText(data.json_text);
   validateRejections(data.rejections);
   validateTampering(data);
   runPythonReference();
