@@ -1,4 +1,4 @@
-"""Deterministic lifecycle and declared-semantic-change validation."""
+"""Deterministic lifecycle and semantic-drift validation."""
 from dataclasses import dataclass
 from paf.kernel.errors import RefinementError
 @dataclass(frozen=True,order=True)
@@ -8,6 +8,32 @@ class ValidationReport:
     proposal_revision:str; candidate_revision:str; issues:tuple=()
     @property
     def passed(self): return not self.issues
+
+def _changed_paths(before, after, path="$semantic-state"):
+    """Return canonical structural changes; absence is intentionally observable."""
+    if type(before) is dict and type(after) is dict:
+        result=[]
+        for key in sorted(set(before) | set(after)):
+            if key not in before or key not in after:
+                result.append((path + "." + key, before.get(key), after.get(key)))
+            else:
+                result.extend(_changed_paths(before[key], after[key], path + "." + key))
+        return result
+    if type(before) in (tuple,list) and type(after) in (tuple,list):
+        # Lists are semantic collections in the common envelope.  Recording the
+        # collection boundary avoids pretending positional changes are facts.
+        return [] if tuple(before) == tuple(after) else [(path, before, after)]
+    return [] if before == after else [(path, before, after)]
+
+def _declares(change, path, before, after, baseline, candidate):
+    if type(change) is not dict or not change.get("source_refs"):
+        return False
+    if change.get("semantic_key") == path and change.get("before") == before and change.get("after") == after:
+        return True
+    # A complete source-linked state transition is an explicit aggregate record,
+    # not an implicit permission to ignore a difference.
+    return (change.get("semantic_key") == "$semantic-state" and
+            change.get("before") == baseline and change.get("after") == candidate)
 
 def validate_refinement(request,proposal,review,decision):
     issues=[]
@@ -25,4 +51,14 @@ def validate_refinement(request,proposal,review,decision):
     changes=pd["semantic_changes"]
     for change in changes:
         if not isinstance(change,dict) or not change.get("source_refs") or (change.get("admission_required",True) and change.get("change_id") not in (() if not dd else tuple(dd["admitted_change_ids"]))): issues.append(ValidationIssue("semantic-change-unrecorded"))
+    baseline=None; candidate=None
+    for ref in pd["validation_refs"]:
+        if type(ref) is dict and ref.get("kind")=="semantic-baseline": baseline=ref.get("value")
+        if type(ref) is dict and ref.get("kind")=="semantic-candidate": candidate=ref.get("value")
+    if baseline is not None or candidate is not None:
+        if baseline is None or candidate is None: issues.append(ValidationIssue("semantic-change-unrecorded","missing-comparison"))
+        elif baseline != candidate:
+            for path, before, after in _changed_paths(baseline,candidate):
+                if not any(_declares(change,path,before,after,baseline,candidate) for change in changes):
+                    issues.append(ValidationIssue("semantic-change-unrecorded",path))
     return ValidationReport(proposal.revision,pd["candidate_revision"],tuple(sorted(issues)))

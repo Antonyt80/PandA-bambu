@@ -24,12 +24,14 @@ class SemanticRecord:
         object.__setattr__(self,"source_refs",tuple(self.source_refs))
         try: canonical_bytes(self.to_dict())
         except Exception: raise RecordError("malformed-record") from None
-    def to_dict(self): return {"key":self.key,"value":wire(self.value),"source_refs":list(self.source_refs)}
+    def to_dict(self): return {"category":self.__class__.__name__,"key":self.key,"value":wire(self.value),"source_refs":list(self.source_refs)}
     @classmethod
     def from_dict(cls,data):
-        exact(data,("key","value","source_refs"))
+        exact(data,("category","key","value","source_refs"))
+        category=_SEMANTIC_CATEGORIES.get(data["category"])
+        if category is None or (cls is not SemanticRecord and category is not cls): raise RecordError("semantic-category-mismatch")
         if type(data["source_refs"]) is not list: raise RecordError("malformed-record")
-        return cls(data["key"],data["value"],tuple(data["source_refs"]))
+        return category(data["key"],data["value"],tuple(data["source_refs"]))
 # Named types retain otherwise-identical semantic values without collapsing categories.
 class SourceClaim(SemanticRecord): pass
 class Fact(SemanticRecord): pass
@@ -45,6 +47,7 @@ class NonGoal(SemanticRecord): pass
 class EvidenceRequirement(SemanticRecord): pass
 class AuthorityBoundary(SemanticRecord): pass
 class TraceLink(SemanticRecord): pass
+_SEMANTIC_CATEGORIES={c.__name__:c for c in (SourceClaim,Fact,Interpretation,Assumption,Unknown,Conflict,Decision,Requirement,Constraint,Risk,NonGoal,EvidenceRequirement,AuthorityBoundary,TraceLink)}
 @dataclass(frozen=True)
 class SemanticChange:
     change_id:str; classification:str; semantic_key:str; before:object; after:object; source_refs:tuple; rationale:str; admission_required:bool=True
