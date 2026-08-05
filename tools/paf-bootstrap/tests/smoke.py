@@ -242,6 +242,79 @@ class BundleSmoke(unittest.TestCase):
             self.assertEqual(["BS-000"], saved["completed_backlog_items"])
 
 
+    def test_review_resume_preserves_sonnet_provider_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = root / "repo"
+            fake_bin = root / "bin"
+            home = root / "home"
+            state = root / "state"
+            fake_bin.mkdir()
+            (home / ".cline-opus").mkdir(parents=True)
+            (home / ".cline-sonnet").mkdir(parents=True)
+            state.mkdir()
+            subprocess.run(["git", "init", "-q", str(repo)], check=True)
+            subprocess.run(["git", "-C", str(repo), "config", "user.name", "PAF Smoke"], check=True)
+            subprocess.run(["git", "-C", str(repo), "config", "user.email", "paf-smoke@example.invalid"], check=True)
+            (repo / "README.md").write_text("base\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(repo), "add", "README.md"], check=True)
+            subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "base"], check=True)
+            head = subprocess.run(
+                ["git", "-C", str(repo), "rev-parse", "HEAD"],
+                text=True, stdout=subprocess.PIPE, check=True,
+            ).stdout.strip()
+            (state / "task.md").write_text("# Review task\n", encoding="utf-8")
+            (state / "base-sha.txt").write_text(head + "\n", encoding="utf-8")
+            (state / "cycle-1-head-sha.txt").write_text(head + "\n", encoding="utf-8")
+            (state / "cycle-1-terra.txt").write_text("Implementation complete\n", encoding="utf-8")
+            (state / "review-resume-20260805T003621Z-opus.txt").write_text(
+                "Plan\nREVIEW_PLAN_STATUS=READY\n", encoding="utf-8"
+            )
+
+            fake_cline = fake_bin / "cline"
+            fake_cline.write_text(
+                """#!/usr/bin/env python3
+import json
+import pathlib
+import sys
+
+config = sys.argv[sys.argv.index("--config") + 1]
+pathlib.Path(__import__("os").environ["CLINE_CALL_LOG"]).write_text(pathlib.Path(config).name + "\\n", encoding="utf-8")
+print(json.dumps({"type": "agent_event", "event": {"type": "error", "error": {"message": "BedrockException: tools.0.custom.strict: Extra inputs are not permitted"}}}))
+print(json.dumps({"type": "run_result", "finishReason": "error", "text": "BedrockException: tools.0.custom.strict: Extra inputs are not permitted"}))
+raise SystemExit(1)
+""",
+                encoding="utf-8",
+            )
+            fake_cline.chmod(0o755)
+            call_log = root / "cline-calls.log"
+            env = os.environ.copy()
+            env.update({
+                "PATH": f"{fake_bin}:{env.get('PATH', '')}",
+                "HOME": str(home),
+                "LITELLM_API_KEY": "smoke-key",
+                "OPENAI_API_KEY": "smoke-key",
+                "CLINE_CALL_LOG": str(call_log),
+            })
+            result = subprocess.run(
+                [
+                    str(self.root / "tools/paf-bootstrap/paf-cline-review-resume"),
+                    "--state-dir", str(state), "--repo", str(repo), "--from", "sonnet",
+                ],
+                env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+            )
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn("Review resume failed at Sonnet", result.stderr)
+            self.assertIn("tools.0.custom.strict", result.stderr)
+            self.assertIn("Summary:", result.stderr)
+            summaries = list(state.glob("review-resume-*-summary.json"))
+            self.assertEqual(1, len(summaries))
+            summary = json.loads(summaries[0].read_text(encoding="utf-8"))
+            self.assertEqual("failed", summary["status"])
+            self.assertEqual("sonnet", summary["role"])
+            self.assertIn("tools.0.custom.strict", summary["reason"])
+            self.assertEqual(".cline-sonnet\n", call_log.read_text(encoding="utf-8"))
+
     def test_controller_mock_end_to_end(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
